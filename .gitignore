@@ -1,0 +1,44 @@
+# Environment Variables
+.env
+.env.local
+.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Backend specific (Python)
+backend/__pycache__/
+backend/*.py[cod]
+backend/venv/
+backend/env/
+backend/.pytest_cache/
+backend/.coverage
+backend/htmlcov/
+backend/*.zip
+backend/package/
+
+# Frontend specific (Node)
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+frontend/.vite/
+frontend/coverage/
+
+# AWS
+.aws/
+
+# Temporary files
+*.tmp
+*.temp

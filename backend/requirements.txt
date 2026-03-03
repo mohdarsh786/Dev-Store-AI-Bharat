@@ -1,0 +1,33 @@
+# FastAPI and ASGI server
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+mangum==0.17.0
+
+# AWS SDK
+boto3==1.29.7
+botocore==1.32.7
+
+# Database
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+
+# OpenSearch
+opensearch-py==2.4.2
+
+# Data validation
+pydantic==2.12.5
+pydantic-settings==2.13.1
+
+# HTTP client
+httpx==0.25.2
+aiohttp==3.9.1
+
+# Testing
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+hypothesis==6.92.1
+
+# Utilities
+python-dotenv==1.0.0
+python-multipart==0.0.6

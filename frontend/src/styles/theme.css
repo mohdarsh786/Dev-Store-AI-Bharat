@@ -1,0 +1,161 @@
+/* Theme variables and glassmorphism styles */
+:root {
+  /* Light mode colors */
+  --bg-gradient-start: #667eea;
+  --bg-gradient-end: #764ba2;
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.8);
+  --accent-color: #0066FF;
+  --accent-hover: #0052CC;
+  --glass-bg: rgba(255, 255, 255, 0.15);
+  --glass-border: rgba(255, 255, 255, 0.25);
+  --shadow-color: rgba(0, 0, 0, 0.2);
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+}
+
+[data-theme="dark"] {
+  /* Dark mode colors */
+  --bg-gradient-start: #0f0c29;
+  --bg-gradient-end: #24243e;
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --accent-color: #0066FF;
+  --accent-hover: #0080FF;
+  --glass-bg: rgba(0, 0, 0, 0.3);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--text-primary);
+  transition: all 300ms ease;
+}
+
+/* Glassmorphism components */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px var(--shadow-color);
+  transition: all 300ms ease;
+  overflow: hidden;
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px var(--shadow-color);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.glass-button {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 14px 28px;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 300ms ease;
+  border: none;
+  outline: none;
+}
+
+.glass-button:hover {
+  background: var(--accent-color);
+  color: white;
+  box-shadow: 0 0 30px rgba(0, 102, 255, 0.6);
+  transform: translateY(-2px);
+}
+
+.glass-button:active {
+  transform: translateY(0);
+}
+
+.glass-input {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 16px 20px;
+  color: var(--text-primary);
+  font-size: 16px;
+  width: 100%;
+  transition: all 300ms ease;
+  outline: none;
+}
+
+.glass-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.glass-input:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 30px rgba(0, 102, 255, 0.4);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Badge styles */
+.badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: all 200ms ease;
+}
+
+.badge-api {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.badge-model {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
+}
+
+.badge-dataset {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  color: white;
+}
+
+.badge-free {
+  background: var(--success-color);
+  color: white;
+}
+
+.badge-paid {
+  background: var(--warning-color);
+  color: white;
+}
+
+/* Score badge */
+.score-badge {
+  background: linear-gradient(135deg, var(--accent-color) 0%, #00a3ff 100%);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 18px;
+  box-shadow: 0 4px 15px rgba(0, 102, 255, 0.3);
+}
