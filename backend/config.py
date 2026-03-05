@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     
+    # Redis (ElastiCache)
+    redis_host: str
+    redis_port: int = 6379
+    redis_password: Optional[str] = None
+    redis_db: int = 0
+    redis_pool_size: int = 50
+    redis_socket_timeout: int = 5
+    
     # OpenSearch
     opensearch_host: str
     opensearch_port: int = 443
@@ -35,10 +43,16 @@ class Settings(BaseSettings):
     # API
     api_rate_limit: int = 100
     api_timeout: int = 30
+    cors_origins: list = ["*"]
     
     # Environment
     environment: str = "development"
     log_level: str = "INFO"
+    
+    # EC2 Deployment
+    server_host: str = "0.0.0.0"
+    server_port: int = 8000
+    workers: int = 4
     
     class Config:
         env_file = ".env"

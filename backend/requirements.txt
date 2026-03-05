@@ -2,6 +2,7 @@
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 mangum==0.17.0
+gunicorn==21.2.0
 
 # AWS SDK
 boto3==1.29.7
@@ -10,6 +11,9 @@ botocore==1.32.7
 # Database
 psycopg2-binary==2.9.9
 sqlalchemy==2.0.23
+
+# Redis (ElastiCache)
+redis[hiredis]==5.0.1
 
 # OpenSearch
 opensearch-py==2.4.2
@@ -31,3 +35,4 @@ hypothesis==6.92.1
 # Utilities
 python-dotenv==1.0.0
 python-multipart==0.0.6
+python-jose[cryptography]==3.3.0
