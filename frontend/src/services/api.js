@@ -60,6 +60,8 @@ class ApiService {
     const params = new URLSearchParams();
     if (filters.resource_type && filters.resource_type !== "All") params.append('resource_type', filters.resource_type);
     if (filters.limit) params.append('limit', filters.limit);
+    if (filters.pricing_type) params.append('pricing_type', filters.pricing_type);
+    if (filters.sort) params.append('sort', filters.sort);
 
     return this.request(`/api/v1/trending?${params}`);
   }

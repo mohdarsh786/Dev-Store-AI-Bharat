@@ -1,11 +1,14 @@
 // Dev-Store Dashboard — connected to OpenSearch + AWS Bedrock backend
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import useSWR from "swr";
 import apiService from "../services/api";
 import useWindowSize from "../hooks/useWindowSize";
 import Tooltip from "../components/Tooltip";
 
-// ─── Lucide-style SVG Icons ───────────────────────────────────────────────────
+// ─── Global Constants ────────────────────────────────────────────────────────
+const A = "#3B82F6"; // Primary Accent
+const AL = "#60A5FA"; // Primary Accent Light
+const CATEGORIES = ["All", "API", "Model", "Dataset"];
 const Icon = ({ d, size = 16, color = "currentColor", strokeWidth = 1.75 }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
     stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
@@ -39,18 +42,24 @@ const Icons = {
   Moon: "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z",
   Menu: ["M4 6h16", "M4 12h16", "M4 18h16"],
   X: ["M18 6L6 18", "M6 6l12 12"],
+  External: ["M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6", "M15 3h6v6", "M10 14L21 3"],
+  Github: "M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z",
+  Download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3",
+  Plus: "M12 5v14M5 12h14",
+  Trophy: "M6 9V2h12v7M6 13a3 3 0 0 1 6 0M6 13a3 3 0 0 0-6 0M18 13a3 3 0 0 1 6 0",
+  Play: ["M5 3l14 9-14 9z"],
+  LayoutGrid: ["M3 3h7v7H3z", "M14 3h7v7h-7z", "M14 14h7v7h-7z", "M3 14h7v7H3z"],
+  Flask: ["M9 3h6v4l4.5 9.5a2 2 0 0 1-1.7 3.5H6.2a2 2 0 0 1-1.7-3.5L9 7V3z", "M9 3v4", "M15 3v4"]
 };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-const CATEGORIES = ["All", "API", "Model", "Dataset"];
-
 const GHOST_TEXTS = [
   "Bhai, best payment gateway batao...",
   "Looking for a ML Model API?",
   "Kaunsa dataset use karein?",
   "Find low-latency inference APIs...",
   "Best open-source model for NLP?",
-  "Search with AI — powered by Bedrock...",
+  "Search with AI...",
 ];
 
 // Accent colors & emojis per resource type
@@ -66,8 +75,19 @@ const PRICING_META = {
   freemium: { color: "#F59E0B", label: "freemium" },
 };
 
+const MOCK_TOOLS = [
+  { id: "1", name: "OpenAI GPT-4", resource_type: "API", description: "Advanced language model via REST API. Best for high-accuracy NLP tasks.", pricing_type: "paid", github_stars: 82000, downloads: 1200000, latency_ms: 320, is_available: true, rank: 1 },
+  { id: "2", name: "Gemini 1.5 Pro", resource_type: "API", description: "Google's multimodal AI API with 1M+ token context window.", pricing_type: "freemium", github_stars: 15400, downloads: 450000, latency_ms: 280, is_available: true, rank: 2 },
+  { id: "3", name: "Razorpay SDK Bharat", resource_type: "API", description: "India's leading payment gateway API, optimized for local banks.", pricing_type: "paid", github_stars: 4200, downloads: 850000, latency_ms: 45, is_available: true, rank: 3 },
+  { id: "4", name: "Llama 3 70B", resource_type: "Model", description: "Meta's flagship open-source LLM, fine-tuned for reasoning.", pricing_type: "free", github_stars: 45000, downloads: 210000, latency_ms: 180, is_available: true, rank: 4 },
+  { id: "5", name: "Mistral 7B v0.3", resource_type: "Model", description: "Compact high-performance language model for edge deployment.", pricing_type: "free", github_stars: 28000, downloads: 350000, latency_ms: 92, is_available: true, rank: 5 },
+  { id: "6", name: "Stable Diffusion XL", resource_type: "Model", description: "State-of-the-art text-to-image generation model.", pricing_type: "free", github_stars: 52000, downloads: 980000, latency_ms: 650, is_available: true, rank: 6 },
+  { id: "7", name: "Common Crawl Hindi", resource_type: "Dataset", description: "Petabyte-scale Hindi web crawl data for training Indian LLMs.", pricing_type: "free", github_stars: 1200, downloads: 54000, latency_ms: 0, is_available: true, rank: 7 },
+  { id: "8", name: "LAION Indian Scenes", resource_type: "Dataset", description: "Large-scale tagged dataset of Indian geographical and cultural scenes.", pricing_type: "free", github_stars: 840, downloads: 22000, latency_ms: 0, is_available: true, rank: 8 },
+];
+
 // Map a backend resource to ToolCard-compatible shape
-function mapResource(r) {
+function mapResource(r, index = 0) {
   const meta = TYPE_META[r.resource_type] || { color: "#6B7280", emoji: "📦" };
   const stars = r.github_stars ?? r.downloads ?? 0;
   const latencyRaw = parseFloat(r.latency_ms ?? r.p99_latency ?? 0);
@@ -87,15 +107,13 @@ function mapResource(r) {
     category: r.resource_type || "API",
     description: r.description || "",
     installCommand,
-    status: r.is_available !== false ? "stable" : "down",
-    stars,
     latency,
     iconEmoji: meta.emoji,
+    status: r.status || (r.is_available !== false ? "stable" : "down"),
+    stars: r.stars || r.github_stars || Math.floor(Math.random() * 5000),
+    downloads: r.downloads || Math.floor(Math.random() * 100000),
+    rank: r.rank || (typeof index === 'number' && index < 10 ? index + 1 : 0),
     accentColor: meta.color,
-    pricingType: r.pricing_type || "free",
-    score: r.score,
-    tags: r.tags || [],
-    provider: r.provider || (r.resource_type === "Model" ? "HuggingFace" : r.resource_type === "API" ? "AWS" : "Community"),
     docsUrl: r.docs_url || "https://docs.example.com",
   };
 }
@@ -150,12 +168,14 @@ function ToolCard({ tool, index, isDark = true }) {
   const dk = isDark;
 
   const handleCopy = async () => {
-    try { await navigator.clipboard.writeText(tool.installCommand); } catch { }
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(tool.installCommand);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { }
   };
 
-  const fmt = (n) => n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n);
+  const fmt = (n) => n >= 1000000 ? (n / 1000000).toFixed(1) + "M" : n >= 1000 ? (n / 1000).toFixed(1) + "k" : String(n);
   const pricing = PRICING_META[tool.pricingType] || PRICING_META.free;
 
   return (
@@ -208,6 +228,16 @@ function ToolCard({ tool, index, isDark = true }) {
             {tool.iconEmoji}
           </div>
           <div>
+            {tool.rank > 0 && tool.rank <= 10 && (
+              <div style={{
+                fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700,
+                color: tool.accentColor || A, textTransform: "uppercase", letterSpacing: "0.05em",
+                textShadow: `0 0 8px ${tool.accentColor}66`,
+                marginBottom: 2
+              }}>
+                #{tool.rank} IN {tool.category}S
+              </div>
+            )}
             <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: 15, color: dk ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.95)", letterSpacing: "-0.02em" }}>
               {tool.name}
             </div>
@@ -286,6 +316,14 @@ function ToolCard({ tool, index, isDark = true }) {
         <div style={{ display: "flex", alignItems: "center", gap: 4, color: dk ? "rgba(255,255,255,0.5)" : "rgba(0,0,0,0.65)", fontSize: 12, background: dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", padding: "4px 8px", borderRadius: 6, border: dk ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.1)" }}>
           <Icon d={Icons.Activity} size={11} />
           <span style={{ fontFamily: "'Fira Code', monospace" }}>{tool.latency}ms (p99)</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, color: tool.accentColor, fontSize: 12, background: `${tool.accentColor}08`, padding: "4px 8px", borderRadius: 6, border: `1px solid ${tool.accentColor}15` }}>
+          <Icon d={Icons.Star} size={11} fill={tool.accentColor} />
+          <span style={{ fontWeight: 600 }}>{fmt(tool.stars)}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, color: dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.5)", fontSize: 12, background: dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", padding: "4px 8px", borderRadius: 6, border: dk ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)" }}>
+          <Icon d={Icons.Download} size={11} />
+          <span>{fmt(tool.downloads)}</span>
         </div>
       </div>
 
@@ -367,11 +405,138 @@ function SkeletonCard({ index, isDark = true }) {
   );
 }
 
+// ─── Workbench / Logic Canvas (Solution Blueprint) ───────────────────────────
+function ResourceWorkbench({ tool, onClose, isDark }) {
+  const dk = isDark;
+  const [pulse, setPulse] = useState(false);
+  const isModel = tool.category === "Model";
+
+  // Simplified Blueprint View
+  const Blueprint = () => (
+    <div style={{ flex: 1, position: "relative", background: dk ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)", borderRadius: 24, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
+      <div style={{ position: "absolute", inset: 0, opacity: 0.1, backgroundImage: `radial-gradient(${dk ? "#fff" : "#000"} 1px, transparent 1px)`, backgroundSize: "30px 30px" }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 60, zIndex: 1, padding: 40 }}>
+        {/* Dataset Node */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 68, height: 68, borderRadius: 18, background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>🗄️</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)" }}>Dataset</div>
+        </div>
+        <Icon d={Icons.ChevronR} size={28} color={tool.accentColor} />
+        {/* Model Node (Featured) */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, transform: "scale(1.2)" }}>
+          <div style={{ width: 90, height: 90, borderRadius: 28, background: `${tool.accentColor}25`, border: `2px solid ${tool.accentColor}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, boxShadow: `0 0 30px ${tool.accentColor}50`, position: "relative" }}>
+            {tool.iconEmoji}
+            <div style={{ position: "absolute", top: -5, right: -5, width: 24, height: 24, borderRadius: "50%", background: "#00FFA3", border: "3px solid #0a1020", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon d={Icons.Check} size={12} color="#000" strokeWidth={3} />
+            </div>
+          </div>
+          <div style={{ fontSize: 15, fontWeight: 800, color: tool.accentColor, marginTop: 8 }}>{tool.name}</div>
+        </div>
+        <Icon d={Icons.ChevronR} size={28} color={tool.accentColor} />
+        {/* API / App Node */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+          <div style={{ width: 68, height: 68, borderRadius: 18, background: "rgba(59, 130, 246, 0.15)", border: "1px solid rgba(59, 130, 246, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>🔌</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)" }}>App/API</div>
+        </div>
+      </div>
+      <div style={{ position: "absolute", bottom: 20, left: 24, padding: "10px 20px", borderRadius: 99, background: dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${dk ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, fontSize: 12, fontWeight: 700, color: dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", gap: 8 }}>
+        <Icon d={Icons.LayoutGrid} size={14} /> Solution Blueprint: Active Flow
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, display: "flex", background: dk ? "rgba(2, 6, 23, 0.9)" : "rgba(240, 244, 255, 0.9)", backdropFilter: "blur(32px)", animation: "fadeIn 0.3s ease-out" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Header Bar */}
+        <div style={{ padding: "16px 40px", background: dk ? "rgba(10,16,32,0.8)" : "rgba(255,255,255,0.8)", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            <div style={{ width: 50, height: 50, borderRadius: 16, background: `${tool.accentColor}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{tool.iconEmoji}</div>
+            <div>
+              <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em" }}>{tool.name} <span style={{ opacity: 0.3, fontWeight: 500, marginLeft: 8 }}>Model Workbench</span></div>
+              <div style={{ fontSize: 13, opacity: 0.5 }}>{tool.provider} • Verified Framework</div>
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 16 }}>
+            <button style={{ padding: "10px 24px", borderRadius: 12, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>Share Blueprint</button>
+            <button onClick={onClose} style={{ width: 44, height: 44, borderRadius: 12, border: "none", background: "rgba(239, 68, 68, 0.1)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#ef4444" }}><Icon d={Icons.X} size={22} /></button>
+          </div>
+        </div>
+
+        {/* Workspace */}
+        <div style={{ flex: 1, display: "flex" }}>
+          {/* Left: Logic Canvas */}
+          <div style={{ flex: 1.2, padding: 40, borderRight: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}`, display: "flex", flexDirection: "column", gap: 32 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+              <div>
+                <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 4 }}>Architectural Flow</h3>
+                <p style={{ fontSize: 13, opacity: 0.5 }}>Connect datasets and output endpoints.</p>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>{["Datasets", "Transforms", "Apps"].map(t => <button key={t} style={{ padding: "6px 14px", borderRadius: 8, background: dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", border: "none", fontSize: 11, fontWeight: 700, cursor: "pointer", opacity: 0.6 }}>+ {t}</button>)}</div>
+            </div>
+            <Blueprint />
+            <div style={{ height: 180, background: dk ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)", borderRadius: 24, padding: 24, border: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
+              <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 12, textTransform: "uppercase", color: tool.accentColor }}>Model Insights</div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
+                <div><div style={{ opacity: 0.4, fontSize: 11 }}>Precision</div><div style={{ fontWeight: 800, fontSize: 15 }}>FP16 / BF16</div></div>
+                <div><div style={{ opacity: 0.4, fontSize: 11 }}>Context Window</div><div style={{ fontWeight: 800, fontSize: 15 }}>128k Tokens</div></div>
+                <div><div style={{ opacity: 0.4, fontSize: 11 }}>Optimization</div><div style={{ fontWeight: 800, fontSize: 15 }}>Triton Kernel</div></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Technical Playground */}
+          <div style={{ flex: 1, padding: 40, background: dk ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.02)", display: "flex", flexDirection: "column", gap: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#00FFA3", boxShadow: "0 0 10px #00FFA3" }} />
+              <h3 style={{ fontSize: 16, fontWeight: 800 }}>Inference Playground</h3>
+            </div>
+
+            <div style={{ flex: 1, background: dk ? "#020617" : "#fff", borderRadius: 24, border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, overflow: "hidden", display: "flex", flexDirection: "column", boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
+              <div style={{ padding: "12px 20px", background: dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}`, display: "flex", gap: 16 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: tool.accentColor }}>PROMPT</span>
+                <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.3 }}>RESPONSE</span>
+              </div>
+              <textarea
+                placeholder="Type your prompt here..."
+                style={{ flex: 1, background: "none", border: "none", padding: 24, paddingBottom: 12, resize: "none", fontSize: 14, fontFamily: "'JetBrains Mono', monospace", color: "inherit", outline: "none" }}
+              />
+              <div style={{ padding: 20, display: "flex", alignItems: "center", gap: 16 }}>
+                <div style={{ flex: 1, height: 1, background: dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" }} />
+                <button
+                  onMouseEnter={() => setPulse(true)}
+                  onMouseLeave={() => setPulse(false)}
+                  style={{
+                    padding: "0 32px", height: 50, borderRadius: 14, background: tool.accentColor, border: "none", color: "#fff", fontWeight: 800, cursor: "pointer",
+                    boxShadow: pulse ? `0 0 30px ${tool.accentColor}80` : "none", transition: "all 0.3s",
+                    display: "flex", alignItems: "center", gap: 10, fontSize: 15
+                  }}
+                >
+                  <Icon d={Icons.Play} size={18} fill="#fff" /> EXECUTE
+                </button>
+              </div>
+            </div>
+
+            <div style={{ height: 280, background: dk ? "#0a1020" : "#fff", borderRadius: 24, padding: 24, border: `1px solid ${dk ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, overflowY: "auto", fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}>
+              <div style={{ opacity: 0.3, marginBottom: 12, fontSize: 11, fontWeight: 800 }}>LIVE OUTPUT</div>
+              <div style={{ color: "#00FFA3" }}>[SYSTEM]: Inializing model {tool.name}...</div>
+              <div style={{ marginTop: 8 }}>Ready for input. Prompt context active.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 // ─── Nav Item ─────────────────────────────────────────────────────────────────
 function NavItem({ iconKey, label, active, onClick, isDark = true }) {
   const [hov, setHov] = useState(false);
   const dk = isDark;
   const ac = "#3B82F6"; const al = "#60A5FA";
+  const needsPulse = ["APIs", "Models", "Data"].includes(label);
+
   return (
     <button
       onClick={onClick}
@@ -381,13 +546,15 @@ function NavItem({ iconKey, label, active, onClick, isDark = true }) {
         width: "100%", background: active ? `${ac}22` : hov ? (dk ? "rgba(255,255,255,0.04)" : "rgba(59,130,246,0.06)") : "transparent",
         border: "none", borderRadius: 16, padding: "12px 8px", cursor: "pointer",
         display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-        position: "relative", transition: "background 0.2s",
+        position: "relative", transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
       }}
+      className={active && needsPulse ? "neon-active" : ""}
     >
       {active && (
         <div style={{
           position: "absolute", left: -12, top: "50%", transform: "translateY(-50%)",
           width: 3, height: 28, background: ac, borderRadius: "0 3px 3px 0",
+          boxShadow: `0 0 10px ${ac}`
         }} />
       )}
       <Icon
@@ -395,13 +562,205 @@ function NavItem({ iconKey, label, active, onClick, isDark = true }) {
         color={active ? al : hov ? (dk ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.8)") : (dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.6)")}
       />
       <span style={{
-        fontSize: 9.5, fontWeight: 600, letterSpacing: "0.05em",
+        fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em",
         color: active ? al : (dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.7)"),
         textTransform: "uppercase", fontFamily: "'DM Sans', sans-serif",
       }}>
         {label}
       </span>
     </button>
+  );
+}
+
+// ─── Settings Modal ───────────────────────────────────────────────────────────
+function SettingsModal({ isDark, onClose, isHinglish, setIsHinglish, toggleTheme, notifySystems, setNotifySystems }) {
+  const dk = isDark;
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)", animation: "fadeIn 0.2s ease" }} onClick={onClose}>
+      <div style={{ width: 400, background: dk ? "rgba(10, 16, 30, 0.85)" : "rgba(255,255,255,0.85)", backdropFilter: "blur(20px)", borderRadius: 24, border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, padding: 32, boxShadow: "0 40px 100px rgba(0,0,0,0.5)" }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800 }}>System Settings</h2>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "inherit" }}><Icon d={Icons.X} size={20} /></button>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 700 }}>Hinglish Mode</div>
+              <div style={{ fontSize: 12, opacity: 0.5 }}>Semantic translation for docs</div>
+            </div>
+            <button onClick={() => setIsHinglish(!isHinglish)} style={{ width: 44, height: 24, borderRadius: 12, background: isHinglish ? "#3B82F6" : "rgba(128,128,128,0.2)", border: "none", cursor: "pointer", position: "relative", transition: "all 0.3s" }}>
+              <div style={{ position: "absolute", top: 3, left: isHinglish ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "all 0.3s" }} />
+            </button>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 700 }}>Appearance</div>
+              <div style={{ fontSize: 12, opacity: 0.5 }}>{dk ? "Dark" : "Light"} mode active</div>
+            </div>
+            <button onClick={toggleTheme} style={{ width: 44, height: 24, borderRadius: 12, background: dk ? "#3B82F6" : "#A855F7", border: "none", cursor: "pointer", position: "relative", transition: "all 0.3s" }}>
+              <Icon d={dk ? Icons.Moon : Icons.Sun} size={12} color="white" style={{ position: "absolute", top: 6, left: dk ? 26 : 6 }} />
+              <div style={{ position: "absolute", top: 3, left: dk ? 3 : 23, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "all 0.3s" }} />
+            </button>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontWeight: 700 }}>System Notifications</div>
+              <div style={{ fontSize: 12, opacity: 0.5 }}>Health & API status alerts</div>
+            </div>
+            <button onClick={() => setNotifySystems(!notifySystems)} style={{ width: 44, height: 24, borderRadius: 12, background: notifySystems ? "#10B981" : "rgba(128,128,128,0.2)", border: "none", cursor: "pointer", position: "relative", transition: "all 0.3s" }}>
+              <div style={{ position: "absolute", top: 3, left: notifySystems ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", transition: "all 0.3s" }} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Auth Portal ──────────────────────────────────────────────────────────────
+function AuthPortal({ isDark, onClose, onLogin }) {
+  const dk = isDark;
+
+  // Handle Escape key
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [onClose]);
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)", animation: "fadeIn 0.2s ease" }}
+      onClick={onClose}
+    >
+      <div
+        style={{ position: "relative", width: 440, background: dk ? "rgba(10, 16, 30, 0.85)" : "rgba(255,255,255,0.85)", backdropFilter: "blur(20px)", borderRadius: 32, border: `1px solid ${dk ? "rgba(255,255,255,0.12)" : "rgba(59,130,246,0.15)"}`, padding: 48, textAlign: "center", boxShadow: "0 40px 100px rgba(0,0,0,0.5)" }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* 'X' Close Button */}
+        <button
+          onClick={onClose}
+          style={{ position: "absolute", top: 24, right: 24, background: "none", border: "none", cursor: "pointer", color: dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", transition: "color 0.2s" }}
+          onMouseEnter={e => e.currentTarget.style.color = dk ? "#fff" : "#000"}
+          onMouseLeave={e => e.currentTarget.style.color = dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)"}
+        >
+          <Icon d={Icons.X} size={20} />
+        </button>
+
+        <div style={{ width: 70, height: 70, background: "rgba(59,130,246,0.1)", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
+          <img src="/logo.png" style={{ width: "70%" }} alt="B" />
+        </div>
+        <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>Welcome to DevStore</h1>
+        <p style={{ fontSize: 14, opacity: 0.5, marginBottom: 32 }}>Build, deploy, and scale with the world's most powerful Developer's marketplace.</p>
+
+        <button
+          onClick={() => onLogin({ name: "Bharat Dev", avatar: "https://i.pravatar.cc/150?u=bharat" })}
+          style={{ width: "100%", height: 50, background: dk ? "#fff" : "#1a1a1a", color: dk ? "#000" : "#fff", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 16, transition: "transform 0.2s" }}
+          onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+          onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
+          <Icon d={Icons.Github} size={20} /> Continue with GitHub
+        </button>
+
+        <div style={{ fontSize: 13, opacity: 0.4 }}>
+          By continuing, you agree to our <a href="#" style={{ color: "inherit", textDecoration: "underline" }}>Terms</a> and <a href="#" style={{ color: "inherit", textDecoration: "underline" }}>Privacy Policy</a>.
+        </div>
+        <button onClick={onClose} style={{ marginTop: 32, background: "none", border: "none", cursor: "pointer", fontSize: 13, opacity: 0.6, textDecoration: "underline" }}>Skip for now</button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Resource Submission Modal ────────────────────────────────────────────────
+function ResourceSubmissionModal({ isDark, onClose }) {
+  const dk = isDark;
+  const [step, setStep] = useState(1); // 1: Github, 2: Pre-fill, 3: Success
+  const [repo, setRepo] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [metadata, setMetadata] = useState(null);
+
+  const handleSync = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      setStep(2);
+      // Mocked AI parsing result
+      setMetadata({
+        title: "Virtual Court AI",
+        desc: "Legal model optimized for Bharat's court proceedings, handling both English and Hinglish transcription with high accuracy.",
+        type: "Model",
+        snippet: "model = dv.load('virtual-court-ai')\nresult = model.transcribe(audio_file)"
+      });
+    }, 1500);
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)", backdropFilter: "blur(12px)", animation: "fadeIn 0.2s ease" }}>
+      <div style={{ width: 500, background: dk ? "#0a1020" : "#fff", borderRadius: 32, border: `1px solid ${dk ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)"}`, padding: 40, boxShadow: "0 40px 100px rgba(0,0,0,0.5)", position: "relative" }}>
+        <button onClick={onClose} style={{ position: "absolute", top: 24, right: 24, background: "none", border: "none", cursor: "pointer", color: "inherit", opacity: 0.4 }}><Icon d={Icons.X} size={20} /></button>
+
+        {step === 1 && (
+          <>
+            <div style={{ width: 60, height: 60, background: "rgba(59,130,246,0.1)", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 24 }}>
+              <Icon d={Icons.Github} size={30} color={A} />
+            </div>
+            <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Submit to DevStore</h2>
+            <p style={{ fontSize: 14, opacity: 0.6, marginBottom: 32 }}>Sync your repository and our AI will automatically prepare your listing.</p>
+
+            <input
+              placeholder="github.com/username/repo-name"
+              value={repo}
+              onChange={e => setRepo(e.target.value)}
+              style={{ width: "100%", padding: "14px 20px", borderRadius: 14, background: dk ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, color: "inherit", marginBottom: 20, fontSize: 14 }}
+            />
+
+            <button
+              onClick={handleSync}
+              disabled={!repo || loading}
+              style={{ width: "100%", height: 50, background: A, color: "#fff", borderRadius: 14, border: "none", fontWeight: 800, fontSize: 15, cursor: "pointer", opacity: (!repo || loading) ? 0.5 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
+            >
+              {loading ? "Syncing..." : "Sync & Pre-fill Metadata"}
+            </button>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 800, color: A, textTransform: "uppercase", marginBottom: 8 }}>AI Parse Success</div>
+            <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 20 }}>Review Listing</h2>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 32 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, opacity: 0.4 }}>RESOURCE TITLE</label>
+                <input value={metadata.title} style={{ width: "100%", background: "none", border: "none", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, padding: "8px 0", fontSize: 16, fontWeight: 700, color: "inherit" }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, opacity: 0.4 }}>DESCRIPTION (HINGLISH)</label>
+                <textarea value={metadata.desc} style={{ width: "100%", background: "none", border: "none", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, padding: "8px 0", fontSize: 13, height: 60, resize: "none", color: "inherit" }} />
+              </div>
+              <div style={{ background: dk ? "#020617" : "#f1f5f9", padding: 16, borderRadius: 12 }}>
+                <label style={{ fontSize: 10, fontWeight: 800, opacity: 0.3, display: "block", marginBottom: 8 }}>CODE SNIPPET</label>
+                <code style={{ fontSize: 11, fontFamily: "monospace", opacity: 0.8, whiteSpace: "pre" }}>{metadata.snippet}</code>
+              </div>
+            </div>
+
+            <button onClick={() => setStep(3)} style={{ width: "100%", height: 50, background: "#10B981", color: "#fff", borderRadius: 14, border: "none", fontWeight: 800, fontSize: 15, cursor: "pointer" }}>Submit Listing</button>
+          </>
+        )}
+
+        {step === 3 && (
+          <div style={{ textAlign: "center", padding: "20px 0" }}>
+            <div style={{ width: 80, height: 80, background: "#10B98115", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
+              <Icon d={Icons.Check} size={40} color="#10B981" />
+            </div>
+            <h2 style={{ fontSize: 24, fontWeight: 800, marginBottom: 12 }}>Resource Submitted!</h2>
+            <p style={{ fontSize: 14, opacity: 0.6, marginBottom: 32 }}>Your application has been received and will be reviewed shortly by our moderators.</p>
+            <button onClick={onClose} style={{ width: "100%", height: 50, background: dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", borderRadius: 14, border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, fontWeight: 700, cursor: "pointer", color: "inherit" }}>Back to Dashboard</button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -436,7 +795,7 @@ function AIChatPanel({ onClose, isDark = true, isMobile = false }) {
         {
           type: "ai",
           content: aiContent,
-          results: results.map(mapResource),
+          results: results.map((r, idx) => mapResource(r, idx)),
         },
       ]);
     } catch {
@@ -547,6 +906,15 @@ export default function DevStoreDashboard() {
   const [errorMsg, setErrorMsg] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isHinglish, setIsHinglish] = useState(false);
+  const [isTopChart, setIsTopChart] = useState(false);
+  const [selectedTool, setSelectedTool] = useState(null);
+  const [activeDiscovery, setActiveDiscovery] = useState("Trending"); // Trending, Top Free, Top Paid, Most Popular
+  const [showSubmission, setShowSubmission] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+  const [notifySystems, setNotifySystems] = useState(true);
   const debounceRef = useRef(null);
   const ghostText = useGhostText(!focused && !query);
 
@@ -557,8 +925,6 @@ export default function DevStoreDashboard() {
   });
   const toggleTheme = () => setIsDark(p => { localStorage.setItem("ds-theme", p ? "light" : "dark"); return !p; });
   const dk = isDark;
-  const A = "#3B82F6";
-  const AL = "#60A5FA";
 
   // Responsive
   const { width } = useWindowSize();
@@ -568,34 +934,57 @@ export default function DevStoreDashboard() {
 
   // SWR-based trending fetcher
   const { data: trendingData, error: trendingError, isValidating: trendingLoading } = useSWR(
-    !query ? [`trending`, activeCategory] : null,
-    () => apiService.getTrending({ resource_type: activeCategory === "All" ? null : activeCategory, limit: 40 }),
+    !query ? [`trending`, activeCategory, isTopChart, activeDiscovery] : null,
+    () => {
+      const filters = { resource_type: activeCategory === "All" ? null : activeCategory, limit: 40 };
+      if (activeDiscovery === "Top Free") {
+        filters.pricing_type = "free";
+        filters.sort = "popularity";
+      } else if (activeDiscovery === "Top Paid") {
+        filters.pricing_type = "paid";
+        filters.sort = "popularity";
+      } else if (activeDiscovery === "Most Popular") {
+        filters.sort = "downloads";
+      } else {
+        filters.sort = "rank_score"; // Unified Ranking Algorithm
+      }
+      return apiService.getTrending(filters);
+    },
     { revalidateOnFocus: false }
   );
 
   useEffect(() => {
-    if (!query && trendingData) {
-      setFiltered((trendingData.results || []).map(mapResource));
+    if (trendingLoading) {
+      setLoading(true);
+    } else if (!query && trendingData) {
+      let results = (trendingData.results || []).map((r, idx) => mapResource(r, idx));
+      if (isTopChart) {
+        results = results.sort((a, b) => (a.rank || 999) - (b.rank || 999));
+      }
+      setFiltered(results);
       setLoading(false);
-      setApiOnline(true); // Assume API is online if trending data is successfully fetched
     } else if (!query && trendingError) {
-      // Fallback to mock data if trending fetch fails and no query is active
-      console.error("Trending fetch failed, using mock data:", trendingError);
       setApiOnline(false); setErrorMsg("Backend offline — showing demo data");
-      const mocks = [
-        { id: "1", name: "OpenAI GPT-4", resource_type: "API", description: "Advanced language model via REST API", pricing_type: "paid", github_stars: 50000, latency_ms: 320, is_available: true },
-        { id: "2", name: "Gemini 1.5", resource_type: "API", description: "Google's multimodal AI API", pricing_type: "freemium", github_stars: 12000, latency_ms: 280, is_available: true },
-        { id: "3", name: "Razorpay SDK", resource_type: "API", description: "India's leading payment gateway API", pricing_type: "paid", github_stars: 1200, latency_ms: 55, is_available: true },
-        { id: "4", name: "Llama 3 70B", resource_type: "Model", description: "Open-source LLM by Meta, fine-tuned", pricing_type: "free", github_stars: 45000, latency_ms: 180, is_available: true },
-        { id: "5", name: "Mistral 7B", resource_type: "Model", description: "Compact high-performance language model", pricing_type: "free", github_stars: 22000, latency_ms: 95, is_available: true },
-        { id: "6", name: "Stable Diffusion XL", resource_type: "Model", description: "Text-to-image generation model", pricing_type: "free", github_stars: 38000, latency_ms: 420, is_available: false },
-        { id: "7", name: "Common Crawl Hindi", resource_type: "Dataset", description: "Petabyte-scale Hindi web crawl data", pricing_type: "free", downloads: 500000, latency_ms: 0, is_available: true },
-        { id: "8", name: "LAION Indian Art", resource_type: "Dataset", description: "12GB tagged Indian art images", pricing_type: "free", downloads: 120000, latency_ms: 0, is_available: true },
-      ].map(mapResource);
-      setFiltered(mocks);
+      const mappedMocks = MOCK_TOOLS.map((r, idx) => mapResource(r, idx));
+      let sortedMocks = [...mappedMocks];
+
+      if (activeDiscovery === "Trending") {
+        sortedMocks.sort((a, b) => (b.stars + b.downloads) - (a.stars + a.downloads));
+      } else if (activeDiscovery === "Top Free") {
+        sortedMocks = sortedMocks.filter(r => r.pricingType === "free");
+        sortedMocks.sort((a, b) => b.stars - a.stars);
+      } else if (activeDiscovery === "Top Paid") {
+        sortedMocks = sortedMocks.filter(r => r.pricingType === "paid");
+        sortedMocks.sort((a, b) => b.stars - a.stars);
+      } else if (activeDiscovery === "Most Popular") {
+        sortedMocks.sort((a, b) => b.downloads - a.downloads);
+      }
+
+      if (isTopChart) sortedMocks.sort((a, b) => a.rank - b.rank);
+      setFiltered(sortedMocks);
       setLoading(false);
     }
-  }, [trendingData, trendingError, query, activeCategory]);
+  }, [trendingData, trendingError, trendingLoading, query, activeCategory, isTopChart, activeDiscovery]);
 
   // Initial connectivity check
   useEffect(() => {
@@ -616,17 +1005,25 @@ export default function DevStoreDashboard() {
     debounceRef.current = setTimeout(async () => {
       try {
         const resp = await apiService.search(query, { resource_types: activeCategory === "All" ? null : [activeCategory], limit: 40 });
-        setFiltered((resp.results || []).map(mapResource));
+        setFiltered((resp.results || []).map((r, idx) => mapResource(r, idx)));
         setApiOnline(true);
       } catch (err) {
         console.error("Search failed:", err);
         setApiOnline(false);
-        setErrorMsg("Search failed — showing demo data");
-        // Fallback to local filter if backend fails during search
-        setFiltered(tools.filter(t => (activeCategory === "All" || t.category === activeCategory) && (t.name.toLowerCase().includes(lq) || t.description.toLowerCase().includes(lq))));
+        setErrorMsg("Backend offline — showing local matches");
+
+        // Use MOCK_TOOLS as source if backend is down and 'tools' is empty
+        const sourceData = tools.length > 0 ? tools : MOCK_TOOLS;
+        const mappedSource = sourceData.map((r, idx) => mapResource(r, idx));
+
+        setFiltered(mappedSource.filter(t =>
+          (activeCategory === "All" || t.category === activeCategory) &&
+          (t.name.toLowerCase().includes(lq) || t.description.toLowerCase().includes(lq))
+        ));
       } finally { setSearchLoading(false); }
     }, 400); // Increased debounce to 400ms for better UX
   }, [query, activeCategory, tools]); // Added 'tools' to dependency array for local fallback
+
 
   const stableCount = tools.filter(t => t.status === "stable").length;
   const NAV = [
@@ -638,22 +1035,24 @@ export default function DevStoreDashboard() {
 
   const sidebarContent = (
     <>
-      <Tooltip text="DevStore AI Bharat" position="right">
+      <Tooltip text="DevStore Home" position="right">
         <a href="/" style={{ textDecoration: "none", display: "block" }}>
           <div style={{
-            width: 100, height: 100, borderRadius: 20, marginBottom: 28,
-            background: dk ? "rgba(255,255,255,0.02)" : "rgba(59,130,246,0.03)",
+            width: 80, height: 80, borderRadius: 20, marginBottom: 40,
+            background: dk ? "rgba(59,130,246,0.08)" : "rgba(59,130,246,0.03)",
             border: `1px solid ${dk ? "rgba(255,255,255,0.06)" : "rgba(59,130,246,0.12)"}`,
             display: "flex", alignItems: "center", justifyContent: "center",
-            overflow: "hidden", cursor: "pointer", transition: "all 0.3s ease"
+            overflow: "hidden", cursor: "pointer", transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.2)"
           }}
-            onMouseEnter={e => e.currentTarget.style.transform = "scale(1.02)"}
-            onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}>
-            <img src="/logo.png" alt="DevStore Logo" style={{ width: "92%", height: "92%", objectFit: "contain" }} />
+            onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.05) rotate(-5deg)"; e.currentTarget.style.borderColor = A; }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) rotate(0deg)"; e.currentTarget.style.borderColor = dk ? "rgba(255,255,255,0.06)" : "rgba(59,130,246,0.12)"; }}>
+            <img src="/logo.png" alt="Logo" style={{ width: "80%", height: "80%", objectFit: "contain" }} />
           </div>
         </a>
       </Tooltip>
-      <div style={{ width: "100%", padding: "0 12px", display: "flex", flexDirection: "column", gap: 4 }}>
+
+      <div style={{ width: "100%", padding: "0 12px", display: "flex", flexDirection: "column", gap: 8 }}>
         {NAV.map((n, i) => (
           <Tooltip key={n.key} text={n.tip} position="right">
             <NavItem iconKey={n.key} label={n.label} active={activeNav === i} isDark={dk}
@@ -667,25 +1066,52 @@ export default function DevStoreDashboard() {
             />
           </Tooltip>
         ))}
-      </div>
-      <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-        <Tooltip text="AI Assistant (Bedrock)" position="right">
-          <button onClick={() => setShowChat(v => !v)} style={{ width: 34, height: 34, borderRadius: 10, background: showChat ? `${A}18` : "transparent", border: showChat ? `1px solid ${A}44` : "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: showChat ? AL : (dk ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.3)"), transition: "all 0.2s" }}>
-            <Icon d={Icons.Brain} size={15} color="currentColor" />
-          </button>
-        </Tooltip>
-        {[["Bell", "Notifications"], ["Settings", "Settings"]].map(([k, tip]) => (
-          <Tooltip key={k} text={tip} position="right">
-            <button style={{ width: 34, height: 34, borderRadius: 10, background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: dk ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.3)", transition: "all 0.2s" }}
-              onMouseEnter={e => { e.currentTarget.style.background = dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}>
-              <Icon d={Icons[k]} size={15} color="currentColor" />
+
+        {/* Top Chart Toggle */}
+        <div style={{ marginTop: 20, padding: "20px 0", borderTop: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
+          <Tooltip text="Sort by Global Popularity" position="right">
+            <button
+              onClick={() => setIsTopChart(!isTopChart)}
+              style={{
+                width: "100%", height: 48, borderRadius: 16, border: isTopChart ? `1px solid ${A}88` : `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}`,
+                background: isTopChart ? `${A}15` : "transparent", color: isTopChart ? AL : (dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)"),
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.3s"
+              }}>
+              <Icon d={Icons.LayoutGrid} size={18} />
             </button>
           </Tooltip>
-        ))}
-        <Tooltip text="Profile" position="right">
-          <div style={{ width: 32, height: 32, borderRadius: "50%", marginTop: 4, background: `linear-gradient(135deg, ${dk ? "#000000ff" : A}, ${AL})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 13, cursor: "pointer", color: "#fff", boxShadow: "0 2px 12px rgba(59,130,246,0.25)" }}>B</div>
-        </Tooltip>
+        </div>
+      </div>
+
+      <div style={{ marginTop: "auto", width: "100%", padding: "0 16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* Contextual Chat Bubble */}
+        <div style={{
+          background: dk ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
+          border: `1px solid ${dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}`,
+          borderRadius: 16, padding: 12, cursor: "pointer"
+        }} onClick={() => setShowChat(true)}>
+          <div style={{ fontSize: 10, fontWeight: 800, color: A, textTransform: "uppercase", marginBottom: 6 }}>Hinglish AI</div>
+          <div style={{ fontSize: 11, fontStyle: "italic", opacity: 0.6 }}>"Mera virtual court app..."</div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "center", gap: 12, alignItems: "center" }}>
+          <Tooltip text="Settings" position="right">
+            <button
+              onClick={() => setShowSettings(true)}
+              style={{ width: 40, height: 40, borderRadius: 12, background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)", transition: "all 0.2s" }}
+              onMouseEnter={e => e.currentTarget.style.color = A}
+              onMouseLeave={e => e.currentTarget.style.color = dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)"}>
+              <Icon d={Icons.Settings} size={18} />
+            </button>
+          </Tooltip>
+          <Tooltip text={isLoggedIn ? "User Dashboard" : "Login / Signup"} position="right">
+            <div
+              onClick={() => isLoggedIn ? alert("User Dashboard coming soon...") : setShowAuth(true)}
+              style={{ width: 38, height: 38, borderRadius: 12, background: `linear-gradient(135deg, ${dk ? "#000000ff" : A}, ${AL})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, cursor: "pointer", color: "#fff", boxShadow: `0 4px 12px ${A}40`, overflow: "hidden" }}>
+              {isLoggedIn ? <img src={user?.avatar || "/logo.png"} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "B"}
+            </div>
+          </Tooltip>
+        </div>
       </div>
     </>
   );
@@ -704,11 +1130,16 @@ export default function DevStoreDashboard() {
         @keyframes shimmer   { 0%,100% { opacity:0.45; } 50% { opacity:0.8; } }
         @keyframes fadeIn    { from { opacity:0; } to { opacity:1; } }
         @keyframes slideIn   { from { transform:translateX(-100%); } to { transform:translateX(0); } }
+        @keyframes float1 { from { transform: translate(0,0); } to { transform: translate(10%, 10%); } }
+        @keyframes float2 { from { transform: translate(0,0); } to { transform: translate(-10%, -5%); } }
+        @keyframes float3 { from { transform: translate(0,0); } to { transform: translate(5%, -10%); } }
+        @keyframes pulseNeon { 0%, 100% { box-shadow: 0 0 4px ${A}, 0 0 10px ${A}44; } 50% { box-shadow: 0 0 12px ${A}, 0 0 20px ${A}66; } }
         .cat-btn:hover { background: ${dk ? "rgba(255,255,255,0.07)" : "rgba(59,130,246,0.15)"} !important; }
         input::placeholder { color: ${dk ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.55)"}; font-style: italic; }
         input:focus, button:focus { outline: none; }
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        .neon-active { animation: pulseNeon 2s infinite ease-in-out; }
       `}</style>
 
       <div style={{ display: "flex", height: "100vh", width: "100vw", overflow: "hidden", background: dk ? "#020617" : "#f8fafc", color: dk ? "#fff" : "#1a1a2e", fontFamily: "'DM Sans', sans-serif" }}>
@@ -718,7 +1149,14 @@ export default function DevStoreDashboard() {
 
         {/* Sidebar */}
         {(!isMobile || sidebarOpen) && (
-          <aside style={{ width: 120, flexShrink: 0, background: dk ? "#0a1020" : "#dce6ff", borderRight: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(59,130,246,0.12)"}`, display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 0", gap: 4, zIndex: 50, ...(isMobile ? { position: "fixed", left: 0, top: 0, bottom: 0, animation: "slideIn 0.25s ease", boxShadow: "4px 0 24px rgba(0,0,0,0.3)" } : {}) }}>
+          <aside style={{
+            width: 120, flexShrink: 0,
+            background: dk ? "rgba(10, 16, 32, 0.7)" : "rgba(220, 230, 255, 0.7)",
+            backdropFilter: "blur(15px)",
+            borderRight: `1px solid ${dk ? "rgba(255,255,255,0.08)" : "rgba(59,130,246,0.15)"}`,
+            display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 0", gap: 4, zIndex: 50,
+            ...(isMobile ? { position: "fixed", left: 0, top: 0, bottom: 0, animation: "slideIn 0.25s ease", boxShadow: "4px 0 24px rgba(0,0,0,0.3)" } : {})
+          }}>
             {isMobile && <button onClick={() => setSidebarOpen(false)} style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", cursor: "pointer", color: dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)" }}><Icon d={Icons.X} size={16} /></button>}
             {sidebarContent}
           </aside>
@@ -728,8 +1166,9 @@ export default function DevStoreDashboard() {
           {/* Floating Gradient Orbs */}
           {dk && (
             <>
-              <div style={{ position: "absolute", width: "40vw", height: "40vw", background: "rgba(59, 130, 246, 0.08)", top: "-10%", left: "-5%", borderRadius: "50%", filter: "blur(120px)", pointerEvents: "none", zIndex: 0 }} />
-              <div style={{ position: "absolute", width: "50vw", height: "50vw", background: "rgba(168, 85, 247, 0.05)", bottom: "-20%", right: "-10%", borderRadius: "50%", filter: "blur(140px)", pointerEvents: "none", zIndex: 0 }} />
+              <div style={{ position: "absolute", width: "50vw", height: "50vw", background: "rgba(34, 211, 238, 0.08)", top: "-10%", left: "-5%", borderRadius: "50%", filter: "blur(140px)", pointerEvents: "none", zIndex: 0, animation: "float1 20s infinite alternate" }} />
+              <div style={{ position: "absolute", width: "60vw", height: "60vw", background: "rgba(168, 85, 247, 0.06)", bottom: "-20%", right: "-10%", borderRadius: "50%", filter: "blur(140px)", pointerEvents: "none", zIndex: 0, animation: "float2 25s infinite alternate" }} />
+              <div style={{ position: "absolute", width: "40vw", height: "40vw", background: "rgba(59, 130, 246, 0.05)", top: "30%", right: "10%", borderRadius: "50%", filter: "blur(140px)", pointerEvents: "none", zIndex: 0, animation: "float3 30s infinite alternate" }} />
             </>
           )}
           {/* Top Bar */}
@@ -790,8 +1229,44 @@ export default function DevStoreDashboard() {
                   <Icon d={dk ? Icons.Sun : Icons.Moon} size={16} />
                 </button>
               </Tooltip>
+              <button
+                onClick={() => setShowSubmission(true)}
+                style={{
+                  height: 38, padding: isMobile ? "0 14px" : "0 20px", borderRadius: 12,
+                  background: `linear-gradient(135deg, ${A}, ${AL})`, color: "#fff",
+                  display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 13,
+                  cursor: "pointer", border: "none", transition: "transform 0.2s, box-shadow 0.2s",
+                  boxShadow: `0 4px 15px ${A}30`
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+              >
+                <Icon d={Icons.Plus} size={16} color="#fff" />
+                {!isMobile && "Create App"}
+              </button>
             </div>
           </header>
+
+          {/* New Horizontal Row of Filter Pills */}
+          <div style={{ flexShrink: 0, padding: `8px ${pad}px`, background: dk ? "rgba(8,12,24,0.4)" : "rgba(240,244,255,0.4)", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"}` }}>
+            <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", gap: 10, overflowX: "auto" }} className="hide-scroll">
+              {["Trending", "Top Free", "Top Paid", "Most Popular"].map(f => (
+                <button
+                  key={f}
+                  onClick={() => setActiveDiscovery(f)}
+                  style={{
+                    padding: "6px 14px", borderRadius: 99, fontSize: 11, fontWeight: 700,
+                    cursor: "pointer", border: "1px solid transparent", transition: "all 0.2s",
+                    background: activeDiscovery === f ? dk ? "rgba(255,255,255,0.1)" : "rgba(59,130,246,0.1)" : "transparent",
+                    color: activeDiscovery === f ? A : dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)",
+                    borderColor: activeDiscovery === f ? `${A}40` : "transparent"
+                  }}
+                >
+                  {f}
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Category Pill Bar */}
           <div className="hide-scroll" style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: isMobile ? 12 : 8, padding: isMobile ? `14px ${pad}px` : `12px ${pad}px`, borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.04)" : "rgba(59,130,246,0.08)"}`, background: dk ? "rgba(10,15,30,0.6)" : "rgba(234,239,255,0.6)", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
@@ -840,14 +1315,15 @@ export default function DevStoreDashboard() {
                     ? <div style={{ gridColumn: "1/-1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "60px 0" }}>
                       <div style={{ fontSize: 36 }}>🔍</div>
                       <div style={{ fontSize: 14, color: dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.6)" }}>No results found</div>
-                      <button onClick={() => { setQuery(""); setActiveCategory("All"); }} style={{ padding: "8px 20px", borderRadius: 99, border: `1px solid ${A}55`, background: "none", color: A, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Clear filters</button>
+                      <button onClick={() => { setQuery(""); setActiveCategory("All"); setActiveDiscovery("Trending"); }} style={{ padding: "8px 20px", borderRadius: 99, border: `1px solid ${A}55`, background: "none", color: A, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Clear filters</button>
                     </div>
                     : filtered.map((tool, i) => {
                       const isFeatured = i % 7 === 0;
                       return (
                         <div key={tool.id} style={{
-                          gridColumn: width >= 1100 ? (isFeatured ? "span 6" : "span 3") : "span 1"
-                        }}>
+                          gridColumn: width >= 1100 ? (isFeatured ? "span 6" : "span 3") : "span 1",
+                          cursor: "pointer"
+                        }} onClick={() => setSelectedTool(tool)}>
                           <ToolCard tool={tool} index={i} isDark={dk} />
                         </div>
                       );
@@ -874,6 +1350,45 @@ export default function DevStoreDashboard() {
           }}>
             <AIChatPanel onClose={() => setShowChat(false)} isDark={dk} isMobile={isMobile} />
           </aside>
+        )}
+
+        {/* Resource Detail Workbench Modal */}
+        {selectedTool && (
+          <ResourceWorkbench
+            tool={selectedTool}
+            onClose={() => setSelectedTool(null)}
+            isDark={dk}
+          />
+        )}
+
+        {/* Settings Modal */}
+        {showSettings && (
+          <SettingsModal
+            isDark={dk}
+            onClose={() => setShowSettings(false)}
+            isHinglish={isHinglish}
+            setIsHinglish={setIsHinglish}
+            toggleTheme={toggleTheme}
+            notifySystems={notifySystems}
+            setNotifySystems={setNotifySystems}
+          />
+        )}
+
+        {/* Auth Portal */}
+        {showAuth && (
+          <AuthPortal
+            isDark={dk}
+            onClose={() => setShowAuth(false)}
+            onLogin={(u) => { setIsLoggedIn(true); setUser(u); setShowAuth(false); }}
+          />
+        )}
+
+        {/* Resource Submission Modal */}
+        {showSubmission && (
+          <ResourceSubmissionModal
+            isDark={dk}
+            onClose={() => setShowSubmission(false)}
+          />
         )}
       </div>
     </>
