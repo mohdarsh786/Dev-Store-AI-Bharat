@@ -1,0 +1,36 @@
+[Unit]
+Description=DevStore API Service
+After=network.target
+
+[Service]
+Type=notify
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/devstore/backend
+Environment="PATH=/home/ubuntu/devstore/backend/venv/bin"
+ExecStart=/home/ubuntu/devstore/backend/venv/bin/gunicorn api_gateway:app \
+    --workers 4 \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --bind 0.0.0.0:8000 \
+    --timeout 120 \
+    --keepalive 5 \
+    --max-requests 1000 \
+    --max-requests-jitter 50 \
+    --access-logfile /var/log/devstore/access.log \
+    --error-logfile /var/log/devstore/error.log \
+    --log-level info
+
+# Restart policy
+Restart=always
+RestartSec=10
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
