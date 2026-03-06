@@ -2,33 +2,57 @@
 
 ## Overview
 
-The Dev Store ingestion pipeline fetches ML models, datasets, APIs, and tools from multiple external sources using two different approaches:
+The Dev Store ingestion pipeline fetches ML models, datasets, and tools from multiple external sources using direct HTTP API calls. Data is automatically deduplicated and organized into separate JSON files.
 
-1. **HTTP API Requests** - For sources with official REST APIs (HuggingFace, OpenRouter, GitHub)
-2. **Web Scraping** - For sources without official APIs (RapidAPI)
+## Design Decision: HTTP API Calls
 
-## Design Decision: HTTP vs Scrapy
-
-### Why HTTP for Most Sources?
-
-We use direct HTTP requests (`httpx` library) instead of Scrapy for HuggingFace, OpenRouter, and GitHub because:
+We use direct HTTP requests (`httpx` library) instead of web scraping frameworks because:
 
 1. **Simplicity**: Direct API calls are simpler and more maintainable
-2. **Performance**: Faster for REST APIs (no Scrapy overhead)
-3. **Error Handling**: Better control over retries and rate limiting
-4. **Debugging**: Easier to debug and test
-5. **Dependencies**: Lighter weight (just `httpx` vs full Scrapy)
+2. **Performance**: Faster for REST APIs (no framework overhead)
+3. **Reliability**: Official APIs are more stable than HTML scraping
+4. **Error Handling**: Better control over retries and rate limiting
+5. **Dependencies**: Lightweight (just `httpx` and `kaggle`)
 
-### When to Use Scrapy?
+## Data Sources
 
-We only use Scrapy for RapidAPI because:
-- No official REST API available
-- Need to scrape HTML pages
-- Scrapy excels at web scraping with built-in features:
-  - Automatic retries
-  - Concurrent requests
-  - HTML parsing
-  - Middleware support
+| Source | Method | Auth Required | What It Fetches |
+|--------|--------|---------------|-----------------|
+| HuggingFace | HTTP API | ❌ No | Models + Datasets |
+| OpenRouter | HTTP API | ❌ No | Models only |
+| GitHub | HTTP API | ⚠️ Optional | Repositories |
+| Kaggle | Kaggle API | ✅ Yes | Datasets only |
+
+## Output Structure
+
+### 4 JSON Files
+
+```
+backend/ingestion/output/
+├── models.json                    # Deduplicated models (HF + OR)
+├── huggingface_datasets.json      # HuggingFace datasets
+├── kaggle_datasets.json           # Kaggle datasets
+└── github_resources.json          # GitHub repositories
+```
+
+### File Contents
+
+1. **models.json**
+   - Source: HuggingFace + OpenRouter
+   - Content: All ML/LLM models
+   - Deduplication: By model name (keeps higher downloads+stars)
+
+2. **huggingface_datasets.json**
+   - Source: HuggingFace only
+   - Content: ML datasets
+
+3. **kaggle_datasets.json**
+   - Source: Kaggle only
+   - Content: Data science datasets
+
+4. **github_resources.json**
+   - Source: GitHub only
+   - Content: Repositories and tools
 
 ## Architecture Diagram
 
@@ -40,8 +64,8 @@ We only use Scrapy for RapidAPI because:
                               ├─────────────────────────────────┐
                               │                                 │
                     ┌─────────▼─────────┐          ┌───────────▼──────────┐
-                    │  HTTP FETCHERS    │          │  SCRAPY CRAWLER      │
-                    │  (Direct API)     │          │  (Web Scraping)      │
+                    │  HTTP FETCHERS    │          │  KAGGLE API CLIENT   │
+                    │  (httpx)          │          │  (kaggle package)    │
                     └─────────┬─────────┘          └───────────┬──────────┘
                               │                                 │
         ┌─────────────────────┼─────────────────────┐          │
@@ -52,26 +76,45 @@ We only use Scrapy for RapidAPI because:
 │                │  │                 │  │                 │ │
 │ • Models       │  │ • LLM Models    │  │ • Repositories  │ │
 │ • Datasets     │  │ • Pricing       │  │ • Tools         │ │
-└────────────────┘  └─────────────────┘  └─────────────────┘ │
-                                                               │
-                                                    ┌──────────▼──────────┐
-                                                    │   RapidAPI Spider   │
-                                                    │                     │
-                                                    │ • API Marketplace   │
-                                                    │ • Web Scraping      │
-                                                    └─────────────────────┘
-                              │
-                              ▼
-                    ┌─────────────────┐
-                    │  Normalization  │
-                    │  & Validation   │
-                    └─────────┬───────┘
-                              │
-                              ▼
-                    ┌─────────────────┐
-                    │  JSON Output    │
-                    │  Files          │
-                    └─────────────────┘
+└────────┬───────┘  └─────────┬───────┘  └─────────┬───────┘ │
+         │                    │                     │          │
+         │                    │                     │   ┌──────▼──────────┐
+         │                    │                     │   │  Kaggle Fetcher │
+         │                    │                     │   │                 │
+         │                    │                     │   │ • Datasets      │
+         │                    │                     │   └──────┬──────────┘
+         │                    │                     │          │
+         ├────────────────────┤                     │          │
+         │                    │                     │          │
+         ▼                    ▼                     ▼          ▼
+    ┌────────────┐      ┌──────────┐         ┌─────────┐  ┌─────────┐
+    │  Models    │      │  Models  │         │ GitHub  │  │ Kaggle  │
+    │ (HF API)   │      │ (OR API) │         │  Repos  │  │Datasets │
+    └─────┬──────┘      └─────┬────┘         └────┬────┘  └────┬────┘
+          │                   │                   │            │
+          └───────┬───────────┘                   │            │
+                  │                               │            │
+                  ▼                               │            │
+         ┌────────────────┐                       │            │
+         │ Deduplication  │                       │            │
+         │  (by name)     │                       │            │
+         └────────┬───────┘                       │            │
+                  │                               │            │
+                  ▼                               ▼            ▼
+         ┌────────────────┐              ┌────────────┐  ┌─────────┐
+         │  models.json   │              │github_     │  │kaggle_  │
+         │  (deduplicated)│              │resources   │  │datasets │
+         └────────────────┘              │.json       │  │.json    │
+                                         └────────────┘  └─────────┘
+         ┌────────────────┐
+         │ HF Datasets    │
+         └────────┬───────┘
+                  │
+                  ▼
+         ┌────────────────┐
+         │huggingface_    │
+         │datasets.json   │
+         └────────────────┘
 ```
 
 ## Components
@@ -83,43 +126,68 @@ Direct API clients using `httpx` library:
 #### HuggingFace Fetcher
 - **File**: `fetchers/huggingface_fetcher.py`
 - **API**: `https://huggingface.co/api`
-- **Auth**: Optional (increases rate limit)
+- **Auth**: Not required (public API)
 - **Fetches**:
   - Models by task (text-classification, image-classification, etc.)
   - Datasets sorted by downloads
-- **Rate Limit**: 1000 req/hour (5000 with token)
+- **Output**: Models → `models.json`, Datasets → `huggingface_datasets.json`
 
 #### OpenRouter Fetcher
 - **File**: `fetchers/openrouter_fetcher.py`
 - **API**: `https://openrouter.ai/api/v1`
-- **Auth**: Not required
+- **Auth**: Not required (public endpoint)
 - **Fetches**:
   - All available LLM models
   - Pricing information
   - Context windows
-- **Rate Limit**: No documented limit
+- **Output**: Models → `models.json` (deduplicated with HuggingFace)
 
 #### GitHub Fetcher
 - **File**: `fetchers/github_fetcher.py`
 - **API**: `https://api.github.com`
-- **Auth**: Optional (increases rate limit)
+- **Auth**: Optional (60→5000 req/hour with token)
 - **Fetches**:
   - Repositories by search queries
   - Stars, forks, metadata
-- **Rate Limit**: 60 req/hour (5000 with token)
+- **Output**: Repositories → `github_resources.json`
 
-### 2. Scrapy Crawler (`scrapers/`)
-
-Web scraping for sites without official APIs:
-
-#### RapidAPI Spider
-- **File**: `scrapers/rapidapi_spider.py`
-- **Method**: Web scraping (HTML parsing)
-- **Why**: No official REST API available
+#### Kaggle Fetcher
+- **File**: `fetchers/kaggle_fetcher.py`
+- **API**: Kaggle API (via `kaggle` package)
+- **Auth**: Required (API credentials)
 - **Fetches**:
-  - API marketplace listings
-  - API metadata and pricing
-  - Categories and ratings
+  - Datasets sorted by popularity
+  - Metadata and statistics
+- **Output**: Datasets → `kaggle_datasets.json`
+
+### 2. Deduplication Logic
+
+Models from HuggingFace and OpenRouter are automatically deduplicated:
+
+```python
+def deduplicate_models(hf_models, or_models):
+    """
+    Deduplication strategy:
+    1. Use model name (lowercase) as unique key
+    2. If duplicate found, compare popularity score
+    3. Keep model with higher (downloads + stars)
+    """
+    models_dict = {}
+    
+    for model in hf_models + or_models:
+        name = model['name'].lower()
+        
+        if name not in models_dict:
+            models_dict[name] = model
+        else:
+            existing_score = existing['downloads'] + existing['stars']
+            new_score = model['downloads'] + model['stars']
+            
+            if new_score > existing_score:
+                models_dict[name] = model
+    
+    return list(models_dict.values())
+```
 
 ### 3. Data Normalization
 
@@ -129,7 +197,7 @@ All fetchers normalize data to a standard format:
 {
     'name': str,              # Resource name
     'description': str,       # Description
-    'source': str,           # Source platform (huggingface, github, etc.)
+    'source': str,           # huggingface|openrouter|github|kaggle
     'source_url': str,       # Original URL
     'author': str,           # Creator/organization
     'stars': int,            # Popularity metric
@@ -137,7 +205,7 @@ All fetchers normalize data to a standard format:
     'license': str,          # License type
     'tags': List[str],       # Tags/topics (max 10)
     'version': str,          # Version identifier
-    'category': str,         # model/dataset/api/solution
+    'category': str,         # model|dataset|api|solution
     'thumbnail_url': str,    # Image URL
     'readme_url': str,       # Documentation URL
     'metadata': dict,        # Source-specific metadata
@@ -149,53 +217,39 @@ All fetchers normalize data to a standard format:
 
 ```
 backend/ingestion/
-├── fetchers/                    # HTTP-based fetchers
+├── fetchers/                       # HTTP-based fetchers
 │   ├── __init__.py
-│   ├── huggingface_fetcher.py  # HuggingFace API client
-│   ├── openrouter_fetcher.py   # OpenRouter API client
-│   └── github_fetcher.py       # GitHub API client
+│   ├── huggingface_fetcher.py     # HuggingFace API
+│   ├── openrouter_fetcher.py      # OpenRouter API
+│   ├── github_fetcher.py          # GitHub API
+│   └── kaggle_fetcher.py          # Kaggle API
 │
-├── scrapers/                    # Scrapy spiders
-│   ├── __init__.py
-│   ├── rapidapi_spider.py      # RapidAPI web scraper
-│   ├── pipelines.py            # Scrapy pipelines
-│   └── settings.py             # Scrapy settings
+├── output/                         # Output directory (created at runtime)
+│   ├── models.json                # Deduplicated models
+│   ├── huggingface_datasets.json  # HuggingFace datasets
+│   ├── kaggle_datasets.json       # Kaggle datasets
+│   └── github_resources.json      # GitHub repositories
 │
-├── services/                    # Shared services
-│   ├── api_clients.py          # Legacy async clients
-│   ├── storage_service.py      # Storage utilities
-│   └── sqs_service.py          # AWS SQS integration
+├── run_ingestion.py               # Main runner script
+├── test_http_fetchers.py          # Test HTTP fetchers
+├── test_imports.py                # Test imports
 │
-├── workers/                     # Background workers
-│   ├── batch_processor.py      # Batch processing
-│   └── embedder.py             # Embedding generation
-│
-├── output/                      # Output directory (created at runtime)
-│   ├── huggingface_resources.json
-│   ├── openrouter_resources.json
-│   ├── github_resources.json
-│   ├── rapidapi_resources.json
-│   └── all_resources_combined.json
-│
-├── run_ingestion.py            # Main runner script
-├── test_http_fetchers.py       # Test HTTP fetchers
-├── config.py                   # Configuration
-├── scrapy.cfg                  # Scrapy configuration
-├── QUICKSTART.md               # Quick start guide
-└── README.md                   # Full documentation
+├── START_HERE.md                  # Quick start guide
+├── QUICKSTART.md                  # Detailed guide
+├── ARCHITECTURE.md                # This file
+├── DATA_STRUCTURE.md              # Data structure docs
+└── README.md                      # Full documentation
 ```
 
 ## Usage
 
 ### Test HTTP Fetchers
-
 ```bash
 cd backend
 .venv\Scripts\python.exe ingestion\test_http_fetchers.py
 ```
 
 ### Run Full Ingestion
-
 ```bash
 cd backend
 .venv\Scripts\python.exe ingestion\run_ingestion.py
@@ -208,23 +262,26 @@ cd backend
 from fetchers.huggingface_fetcher import HuggingFaceFetcher
 fetcher = HuggingFaceFetcher()
 results = fetcher.fetch_and_normalize_all()
+# results['models'] → models.json
+# results['datasets'] → huggingface_datasets.json
 
 # OpenRouter
 from fetchers.openrouter_fetcher import OpenRouterFetcher
 fetcher = OpenRouterFetcher()
 models = fetcher.fetch_and_normalize_all()
+# models → models.json (deduplicated)
 
 # GitHub
 from fetchers.github_fetcher import GitHubFetcher
 fetcher = GitHubFetcher()
 repos = fetcher.fetch_and_normalize_all()
-```
+# repos → github_resources.json
 
-### Run RapidAPI Crawler
-
-```bash
-cd backend/ingestion
-scrapy crawl rapidapi_resource -o output/rapidapi.json
+# Kaggle
+from fetchers.kaggle_fetcher import KaggleFetcher
+fetcher = KaggleFetcher()
+datasets = fetcher.fetch_and_normalize_all()
+# datasets → kaggle_datasets.json
 ```
 
 ## Performance
@@ -234,9 +291,11 @@ scrapy crawl rapidapi_resource -o output/rapidapi.json
 | HuggingFace | HTTP | ~30s | ~1000 models + 100 datasets |
 | OpenRouter | HTTP | ~2s | ~100 models |
 | GitHub | HTTP | ~2m | ~900 repositories |
-| RapidAPI | Scrapy | Varies | Depends on site |
+| Kaggle | Kaggle API | ~10s | ~500 datasets |
 
 **Total**: ~3-5 minutes for all sources
+
+**Deduplication**: Adds ~1 second (in-memory operation)
 
 ## Error Handling
 
@@ -246,64 +305,79 @@ scrapy crawl rapidapi_resource -o output/rapidapi.json
 - Graceful degradation (continue on error)
 - Detailed error logging
 
-### Scrapy Crawler
-- Built-in retry middleware
-- Concurrent request limiting
-- HTML parsing error handling
-- Automatic throttling
+### Deduplication
+- Handles missing fields gracefully
+- Defaults to 0 for missing downloads/stars
+- Preserves all unique models
 
 ## Rate Limits
 
 | Source | Without Token | With Token | How to Get Token |
 |--------|---------------|------------|------------------|
-| HuggingFace | 1000/hour | 5000/hour | https://huggingface.co/settings/tokens |
-| GitHub | 60/hour | 5000/hour | https://github.com/settings/tokens |
+| HuggingFace | Unlimited | N/A | Not required |
 | OpenRouter | Unlimited | N/A | Not required |
-| RapidAPI | N/A | N/A | Web scraping (no API) |
+| GitHub | 60/hour | 5000/hour | https://github.com/settings/tokens |
+| Kaggle | N/A | Required | https://www.kaggle.com/docs/api |
 
-## Future Enhancements
+## Authentication Setup
 
-1. **Incremental Updates**: Only fetch new/updated resources
-2. **Caching**: Cache API responses to reduce API calls
-3. **Deduplication**: Remove duplicate resources across sources
-4. **Validation**: Validate resource data before storage
-5. **AWS Integration**: Push to SQS, store in S3, index in OpenSearch
-6. **Monitoring**: CloudWatch metrics and alerts
-7. **Scheduling**: EventBridge rules for periodic runs
+### GitHub (Optional)
+```bash
+# Add to backend/.env
+INGESTION_GITHUB_API_TOKEN=your_token_here
+```
+
+### Kaggle (Required)
+```bash
+# Option 1: Place kaggle.json in ~/.kaggle/
+~/.kaggle/kaggle.json
+
+# Option 2: Set environment variables
+KAGGLE_USERNAME=your_username
+KAGGLE_KEY=your_api_key
+```
 
 ## Dependencies
 
 ```
 httpx>=0.24.0          # HTTP client for API requests
-scrapy>=2.11.0         # Web scraping framework (RapidAPI only)
-pydantic>=2.0.0        # Data validation
-pydantic-settings>=2.0.0  # Settings management
+kaggle>=1.5.0          # Kaggle API client
+pydantic>=2.0.0        # Data validation (optional)
 ```
 
-## Configuration
+## Future Enhancements
 
-Environment variables (optional):
+1. **Incremental Updates**: Only fetch new/updated resources
+2. **Caching**: Cache API responses to reduce API calls
+3. **Advanced Deduplication**: Use fuzzy matching for similar names
+4. **Validation**: Validate resource data before storage
+5. **AWS Integration**: Push to SQS, store in S3, index in OpenSearch
+6. **Monitoring**: CloudWatch metrics and alerts
+7. **Scheduling**: EventBridge rules for periodic runs
+8. **Parallel Fetching**: Fetch from multiple sources simultaneously
 
-```bash
-# Optional tokens for higher rate limits
-INGESTION_HUGGINGFACE_API_TOKEN=your_token_here
-INGESTION_GITHUB_API_TOKEN=your_token_here
+## Benefits
 
-# AWS configuration (for production)
-INGESTION_SQS_QUEUE_URL=https://sqs.region.amazonaws.com/account/queue
-```
+1. **No Duplicates**: Automatic deduplication for models
+2. **Clean Separation**: Datasets from different sources in separate files
+3. **Simple**: Direct HTTP calls, no complex frameworks
+4. **Fast**: Optimized for REST APIs
+5. **Reliable**: Uses official APIs
+6. **Maintainable**: Clear code structure
+7. **Flexible**: Easy to add new sources
+8. **Traceable**: Each item has `source` field
 
 ## Testing
 
 ```bash
-# Test HTTP fetchers
+# Test all fetchers
 python ingestion/test_http_fetchers.py
 
-# Test individual components
-python -m pytest ingestion/tests/
+# Test imports
+python ingestion/test_imports.py
 
-# Test with coverage
-python -m pytest --cov=ingestion ingestion/tests/
+# Run full ingestion
+python ingestion/run_ingestion.py
 ```
 
 ## Troubleshooting
@@ -314,11 +388,15 @@ cd backend
 pip install -r requirements.txt
 ```
 
-### "Rate limit exceeded"
-Add authentication tokens to `.env` file
+### "Rate limit exceeded" (GitHub)
+Add authentication token to `.env` file
+
+### "Kaggle authentication failed"
+Set up Kaggle API credentials at `~/.kaggle/kaggle.json`
 
 ### "Connection timeout"
 Check internet connection and API status
 
-### "Scrapy not found"
-Make sure you're in the `backend/ingestion` directory where `scrapy.cfg` is located
+---
+
+**The architecture is optimized for simplicity, performance, and reliability!**

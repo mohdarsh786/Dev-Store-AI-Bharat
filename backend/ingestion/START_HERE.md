@@ -26,56 +26,86 @@ source .venv/bin/activate
 python ingestion/run_ingestion.py
 ```
 
-## What This Does
+## Output Files
 
-### HTTP Fetchers (Fast & Simple)
-- **HuggingFace**: Fetches ML models & datasets via API (NO AUTH REQUIRED)
-- **OpenRouter**: Fetches LLM models with pricing via API (NO AUTH REQUIRED)
-- **GitHub**: Fetches repositories & tools via API (optional token)
+Files saved to `backend/ingestion/output/`:
 
-### Scrapy Crawler (Web Scraping)
-- **RapidAPI**: Scrapes API marketplace (no official API available)
+| File | Content | Source |
+|------|---------|--------|
+| `models.json` | All models (deduplicated) | HuggingFace + OpenRouter |
+| `huggingface_datasets.json` | Datasets | HuggingFace only |
+| `kaggle_datasets.json` | Datasets | Kaggle only |
+| `github_resources.json` | Repositories & tools | GitHub |
+
+## Data Sources
+
+| Source | What It Fetches | Auth Required |
+|--------|-----------------|---------------|
+| HuggingFace | Models & Datasets | ❌ No |
+| OpenRouter | Models only | ❌ No |
+| GitHub | Repositories | ⚠️ Optional |
+| Kaggle | Datasets only | ✅ Yes |
+
+## Deduplication
+
+Models from HuggingFace and OpenRouter are automatically deduplicated:
+- Uses model name as unique key
+- If duplicate found, keeps the one with more downloads/stars
+- Saves to single `models.json` file
 
 ## Authentication
 
-| Source | Required? | Purpose |
-|--------|-----------|---------|
+| Source | Required? | How to Set Up |
+|--------|-----------|---------------|
 | HuggingFace | ❌ No | Public API, no auth needed |
 | OpenRouter | ❌ No | Public API, no auth needed |
-| GitHub | ⚠️ Optional | Increases rate limit 60→5000/hour |
-| RapidAPI | ❌ No | Web scraping, no API |
+| GitHub | ⚠️ Optional | Add `INGESTION_GITHUB_API_TOKEN` to `.env` |
+| Kaggle | ✅ Yes | Set up `~/.kaggle/kaggle.json` |
 
-## Output
+### GitHub Token (Optional)
+Increases rate limit from 60 to 5000 requests/hour.
 
-Files saved to `backend/ingestion/output/`:
-- `huggingface_resources.json` - Models & datasets
-- `openrouter_resources.json` - LLM models
-- `github_resources.json` - Repositories
-- `rapidapi_resources.json` - APIs
-- `all_resources_combined.json` - Everything
+Get token: https://github.com/settings/tokens
+
+Add to `backend/.env`:
+```bash
+INGESTION_GITHUB_API_TOKEN=your_token_here
+```
+
+### Kaggle Credentials (Required for Kaggle)
+1. Go to https://www.kaggle.com/settings/account
+2. Click "Create New API Token"
+3. Download `kaggle.json`
+4. Place in `~/.kaggle/kaggle.json`
 
 ## File Structure
 
 ```
 backend/ingestion/
-├── fetchers/                    # HTTP-based fetchers
-│   ├── huggingface_fetcher.py  # HuggingFace API
-│   ├── openrouter_fetcher.py   # OpenRouter API
-│   └── github_fetcher.py       # GitHub API
+├── fetchers/
+│   ├── huggingface_fetcher.py  # Models + Datasets
+│   ├── openrouter_fetcher.py   # Models only
+│   ├── github_fetcher.py       # Repositories
+│   └── kaggle_fetcher.py       # Datasets only
 │
-├── scrapers/                    # Scrapy spiders
-│   └── rapidapi_spider.py      # RapidAPI scraper
+├── output/
+│   ├── models.json                    # Deduplicated models
+│   ├── huggingface_datasets.json      # HF datasets
+│   ├── kaggle_datasets.json           # Kaggle datasets
+│   └── github_resources.json          # GitHub repos
 │
 ├── run_ingestion.py            # Main runner
-├── test_http_fetchers.py       # Test script
-└── output/                     # Output directory
+└── test_http_fetchers.py       # Test script
 ```
 
-## Documentation
+## Performance
 
-- **[QUICKSTART.md](QUICKSTART.md)** - Quick start guide
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** - Architecture details
-- **[README.md](README.md)** - Full documentation
+- HuggingFace: ~30s for 1000+ models + 100 datasets
+- OpenRouter: ~2s for 100+ models
+- GitHub: ~2m for 900+ repos
+- Kaggle: ~10s for 500 datasets
+
+**Total: ~3-5 minutes**
 
 ## Troubleshooting
 
@@ -83,24 +113,14 @@ backend/ingestion/
 ```bash
 cd backend
 pip install -r requirements.txt
+pip install kaggle  # Optional, for Kaggle datasets
 ```
 
 ### GitHub rate limit?
-Add token to `backend/.env`:
-```bash
-INGESTION_GITHUB_API_TOKEN=your_token_here
-```
+Add token to `backend/.env`
 
-Get token: https://github.com/settings/tokens
-
-## Performance
-
-- HuggingFace: ~30s for 1000+ resources
-- OpenRouter: ~2s for 100+ models
-- GitHub: ~2m for 900+ repos
-- RapidAPI: Varies (web scraping)
-
-**Total: ~3-5 minutes**
+### Kaggle not working?
+Make sure credentials are set up at `~/.kaggle/kaggle.json`
 
 ---
 
