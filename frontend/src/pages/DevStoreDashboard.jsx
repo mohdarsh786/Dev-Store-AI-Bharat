@@ -1,9 +1,10 @@
-// Dev-Store Dashboard — connected to OpenSearch + AWS Bedrock backend
+// Dev-Store Dashboard — Glassmorphism + Neon Accents V2.0
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import useSWR from "swr";
 import apiService from "../services/api";
 import useWindowSize from "../hooks/useWindowSize";
 import Tooltip from "../components/Tooltip";
+import "./DevStoreDashboard.css";
 
 // ─── Global Constants ────────────────────────────────────────────────────────
 const A = "#3B82F6"; // Primary Accent
@@ -905,6 +906,7 @@ export default function DevStoreDashboard() {
   const [apiOnline, setApiOnline] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isHinglish, setIsHinglish] = useState(false);
   const [isTopChart, setIsTopChart] = useState(false);
   const [selectedTool, setSelectedTool] = useState(null);
@@ -923,8 +925,18 @@ export default function DevStoreDashboard() {
     const s = localStorage.getItem("ds-theme");
     return s ? s === "dark" : true;
   });
-  const toggleTheme = () => setIsDark(p => { localStorage.setItem("ds-theme", p ? "light" : "dark"); return !p; });
+  const toggleTheme = () => setIsDark(p => {
+    const next = !p;
+    localStorage.setItem("ds-theme", next ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", next ? "dark" : "light");
+    return next;
+  });
   const dk = isDark;
+
+  // Sync data-theme on mount
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+  }, []);
 
   // Responsive
   const { width } = useWindowSize();
@@ -1033,145 +1045,75 @@ export default function DevStoreDashboard() {
     { key: "Database", label: "Data", tip: "Browse Datasets" },
   ];
 
-  const sidebarContent = (
-    <>
-      <Tooltip text="DevStore Home" position="right">
-        <a href="/" style={{ textDecoration: "none", display: "block" }}>
-          <div style={{
-            width: 80, height: 80, borderRadius: 20, marginBottom: 40,
-            background: dk ? "rgba(59,130,246,0.08)" : "rgba(59,130,246,0.03)",
-            border: `1px solid ${dk ? "rgba(255,255,255,0.06)" : "rgba(59,130,246,0.12)"}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            overflow: "hidden", cursor: "pointer", transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-            boxShadow: "0 10px 30px rgba(0,0,0,0.2)"
-          }}
-            onMouseEnter={e => { e.currentTarget.style.transform = "scale(1.05) rotate(-5deg)"; e.currentTarget.style.borderColor = A; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = "scale(1) rotate(0deg)"; e.currentTarget.style.borderColor = dk ? "rgba(255,255,255,0.06)" : "rgba(59,130,246,0.12)"; }}>
-            <img src="/logo.png" alt="Logo" style={{ width: "80%", height: "80%", objectFit: "contain" }} />
-          </div>
-        </a>
-      </Tooltip>
-
-      <div style={{ width: "100%", padding: "0 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-        {NAV.map((n, i) => (
-          <Tooltip key={n.key} text={n.tip} position="right">
-            <NavItem iconKey={n.key} label={n.label} active={activeNav === i} isDark={dk}
-              onClick={() => {
-                setActiveNav(i);
-                const mappedCat = ["All", "API", "Model", "Dataset"][i];
-                setActiveCategory(mappedCat);
-                setQuery("");
-                if (isMobile) setSidebarOpen(false);
-              }}
-            />
-          </Tooltip>
-        ))}
-
-        {/* Top Chart Toggle */}
-        <div style={{ marginTop: 20, padding: "20px 0", borderTop: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
-          <Tooltip text="Sort by Global Popularity" position="right">
-            <button
-              onClick={() => setIsTopChart(!isTopChart)}
-              style={{
-                width: "100%", height: 48, borderRadius: 16, border: isTopChart ? `1px solid ${A}88` : `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}`,
-                background: isTopChart ? `${A}15` : "transparent", color: isTopChart ? AL : (dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)"),
-                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.3s"
-              }}>
-              <Icon d={Icons.LayoutGrid} size={18} />
-            </button>
-          </Tooltip>
-        </div>
-      </div>
-
-      <div style={{ marginTop: "auto", width: "100%", padding: "0 16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
-        {/* Contextual Chat Bubble */}
-        <div style={{
-          background: dk ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)",
-          border: `1px solid ${dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.05)"}`,
-          borderRadius: 16, padding: 12, cursor: "pointer"
-        }} onClick={() => setShowChat(true)}>
-          <div style={{ fontSize: 10, fontWeight: 800, color: A, textTransform: "uppercase", marginBottom: 6 }}>Hinglish AI</div>
-          <div style={{ fontSize: 11, fontStyle: "italic", opacity: 0.6 }}>"Mera virtual court app..."</div>
-        </div>
-
-        <div style={{ display: "flex", justifyContent: "center", gap: 12, alignItems: "center" }}>
-          <Tooltip text="Settings" position="right">
-            <button
-              onClick={() => setShowSettings(true)}
-              style={{ width: 40, height: 40, borderRadius: 12, background: "transparent", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)", transition: "all 0.2s" }}
-              onMouseEnter={e => e.currentTarget.style.color = A}
-              onMouseLeave={e => e.currentTarget.style.color = dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)"}>
-              <Icon d={Icons.Settings} size={18} />
-            </button>
-          </Tooltip>
-          <Tooltip text={isLoggedIn ? "User Dashboard" : "Login / Signup"} position="right">
-            <div
-              onClick={() => isLoggedIn ? alert("User Dashboard coming soon...") : setShowAuth(true)}
-              style={{ width: 38, height: 38, borderRadius: 12, background: `linear-gradient(135deg, ${dk ? "#000000ff" : A}, ${AL})`, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 14, cursor: "pointer", color: "#fff", boxShadow: `0 4px 12px ${A}40`, overflow: "hidden" }}>
-              {isLoggedIn ? <img src={user?.avatar || "/logo.png"} style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : "B"}
-            </div>
-          </Tooltip>
-        </div>
-      </div>
-    </>
-  );
+  // sidebarContent is now rendered inline with CSS classes
 
   return (
     <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Fira+Code:wght@400;500&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { overflow-x: hidden; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: ${dk ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.1)"}; border-radius: 4px; }
-        @keyframes cardIn    { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes pulseGlow { 0%,100% { opacity:1; box-shadow:0 0 6px currentColor; } 50% { opacity:0.4; box-shadow:none; } }
-        @keyframes shimmer   { 0%,100% { opacity:0.45; } 50% { opacity:0.8; } }
-        @keyframes fadeIn    { from { opacity:0; } to { opacity:1; } }
-        @keyframes slideIn   { from { transform:translateX(-100%); } to { transform:translateX(0); } }
-        @keyframes float1 { from { transform: translate(0,0); } to { transform: translate(10%, 10%); } }
-        @keyframes float2 { from { transform: translate(0,0); } to { transform: translate(-10%, -5%); } }
-        @keyframes float3 { from { transform: translate(0,0); } to { transform: translate(5%, -10%); } }
-        @keyframes pulseNeon { 0%, 100% { box-shadow: 0 0 4px ${A}, 0 0 10px ${A}44; } 50% { box-shadow: 0 0 12px ${A}, 0 0 20px ${A}66; } }
-        .cat-btn:hover { background: ${dk ? "rgba(255,255,255,0.07)" : "rgba(59,130,246,0.15)"} !important; }
-        input::placeholder { color: ${dk ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.55)"}; font-style: italic; }
-        input:focus, button:focus { outline: none; }
-        .hide-scroll::-webkit-scrollbar { display: none; }
-        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-        .neon-active { animation: pulseNeon 2s infinite ease-in-out; }
-      `}</style>
-
-      <div style={{ display: "flex", height: "100vh", width: "100vw", overflow: "hidden", background: dk ? "#020617" : "#f8fafc", color: dk ? "#fff" : "#1a1a2e", fontFamily: "'DM Sans', sans-serif" }}>
+      <div className="ds-shell">
 
         {/* Mobile overlay */}
-        {isMobile && sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 40, animation: "fadeIn 0.2s ease" }} />}
+        {isMobile && sidebarOpen && <div className="ds-mobile-overlay" onClick={() => setSidebarOpen(false)} />}
+
+        {/* Gradient Orbs */}
+        <div className="ds-orb ds-orb--1" />
+        <div className="ds-orb ds-orb--2" />
+        <div className="ds-orb ds-orb--3" />
 
         {/* Sidebar */}
         {(!isMobile || sidebarOpen) && (
-          <aside style={{
-            width: 120, flexShrink: 0,
-            background: dk ? "rgba(10, 16, 32, 0.7)" : "rgba(220, 230, 255, 0.7)",
-            backdropFilter: "blur(15px)",
-            borderRight: `1px solid ${dk ? "rgba(255,255,255,0.08)" : "rgba(59,130,246,0.15)"}`,
-            display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 0", gap: 4, zIndex: 50,
-            ...(isMobile ? { position: "fixed", left: 0, top: 0, bottom: 0, animation: "slideIn 0.25s ease", boxShadow: "4px 0 24px rgba(0,0,0,0.3)" } : {})
-          }}>
-            {isMobile && <button onClick={() => setSidebarOpen(false)} style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", cursor: "pointer", color: dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)" }}><Icon d={Icons.X} size={16} /></button>}
-            {sidebarContent}
+          <aside className={`ds-sidebar ${isMobile ? "ds-sidebar--mobile" : ""} ${!isMobile && sidebarCollapsed ? "ds-sidebar--collapsed" : ""}`}>
+            {!isMobile && (
+              <button className="ds-sidebar__toggle" onClick={() => setSidebarCollapsed(c => !c)} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
+                <Icon d={Icons.ChevronR} size={14} />
+              </button>
+            )}
+            <div className="ds-sidebar__header">
+              <div className="ds-sidebar__logo"><img src="/logo.png" alt="DevStore" /></div>
+              <span className="ds-sidebar__brand ds-sidebar__label">DevStore</span>
+              {isMobile && <button onClick={() => setSidebarOpen(false)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--ds-text-secondary)" }} aria-label="Close menu"><Icon d={Icons.X} size={18} /></button>}
+            </div>
+
+            <nav className="ds-sidebar__nav">
+              {NAV.map((n, i) => (
+                <button key={n.key} className={`ds-sidebar__nav-item ${activeNav === i ? "ds-sidebar__nav-item--active" : ""}`}
+                  onClick={() => { setActiveNav(i); setActiveCategory(["All", "API", "Model", "Dataset"][i]); setQuery(""); if (isMobile) setSidebarOpen(false); }}>
+                  <span className="ds-sidebar__icon-wrap">
+                    <Icon d={Icons[n.key]} size={24} />
+                  </span>
+                  <span className="ds-sidebar__label">{n.label}</span>
+                </button>
+              ))}
+            </nav>
+
+            <div className="ds-sidebar__divider" />
+            <div className="ds-sidebar__section-title">Quick Access</div>
+            <nav className="ds-sidebar__nav">
+              <button className="ds-sidebar__nav-item" onClick={() => setShowChat(true)}>
+                <span className="ds-sidebar__icon-wrap"><Icon d={Icons.Brain} size={24} color="var(--ds-primary)" /></span>
+                <span className="ds-sidebar__label">AI Assistant</span>
+              </button>
+              <button className="ds-sidebar__nav-item" onClick={() => setIsTopChart(!isTopChart)} style={isTopChart ? { color: "var(--ds-primary)" } : {}}>
+                <span className="ds-sidebar__icon-wrap"><Icon d={Icons.LayoutGrid} size={24} /></span>
+                <span className="ds-sidebar__label">Top Chart</span>
+              </button>
+            </nav>
+
+            <div className="ds-sidebar__bottom">
+              <button className="ds-sidebar__bottom-item" onClick={() => setShowSettings(true)} aria-label="Settings">
+                <span className="ds-sidebar__icon-wrap"><Icon d={Icons.Settings} size={24} /></span>
+                <span className="ds-sidebar__label">Settings</span>
+              </button>
+              <button className="ds-sidebar__bottom-item" onClick={() => isLoggedIn ? null : setShowAuth(true)} aria-label="Login">
+                {isLoggedIn
+                  ? <><div className="ds-topbar__user-avatar" style={{ width: 28, height: 28 }}><img src={user?.avatar} alt="" /></div> <span className="ds-sidebar__label">{user?.name}</span></>
+                  : <><span className="ds-sidebar__icon-wrap"><Icon d={Icons.Github} size={24} /></span> <span className="ds-sidebar__label">Login</span></>
+                }
+              </button>
+            </div>
           </aside>
         )}
 
-        <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
-          {/* Floating Gradient Orbs */}
-          {dk && (
-            <>
-              <div style={{ position: "absolute", width: "50vw", height: "50vw", background: "rgba(34, 211, 238, 0.08)", top: "-10%", left: "-5%", borderRadius: "50%", filter: "blur(140px)", pointerEvents: "none", zIndex: 0, animation: "float1 20s infinite alternate" }} />
-              <div style={{ position: "absolute", width: "60vw", height: "60vw", background: "rgba(168, 85, 247, 0.06)", bottom: "-20%", right: "-10%", borderRadius: "50%", filter: "blur(140px)", pointerEvents: "none", zIndex: 0, animation: "float2 25s infinite alternate" }} />
-              <div style={{ position: "absolute", width: "40vw", height: "40vw", background: "rgba(59, 130, 246, 0.05)", top: "30%", right: "10%", borderRadius: "50%", filter: "blur(140px)", pointerEvents: "none", zIndex: 0, animation: "float3 30s infinite alternate" }} />
-            </>
-          )}
-          {/* Top Bar */}
+        <main className="ds-main">
           <header style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: isMobile ? 10 : 16, padding: `14px ${pad}px`, flexWrap: isMobile ? "wrap" : "nowrap", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(59,130,246,0.1)"}`, background: dk ? "rgba(8,12,24,0.8)" : "rgba(240,244,255,0.8)", backdropFilter: "blur(12px)" }}>
             {isMobile && (
               <Tooltip text="Open menu" position="bottom">

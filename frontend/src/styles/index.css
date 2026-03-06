@@ -1,87 +1,199 @@
-/* Global Styles and CSS Custom Properties for Theming */
+/* ══════════════════════════════════════════════════════════════════════════════
+   DevStore — Glassmorphism + Neon Accents V2.0
+   Frosted glass surfaces, neon glow micro-systems, dynamic gradient orbs.
+   All tokens use --ds-* prefix.
+   ══════════════════════════════════════════════════════════════════════════════ */
 
+/* ─── Design Tokens: Dark Mode (Default) ──────────────────────────────────── */
 :root {
-  /* Light Mode Colors */
-  --color-bg-primary: #FFFFFF;
-  --color-bg-secondary: #F8F9FA;
-  --color-accent: #0052CC;
-  --color-accent-light: #0066FF;
-  --color-text-primary: #000000;
-  --color-text-secondary: #4A5568;
-  --color-border: rgba(0, 82, 204, 0.2);
-  
-  /* Glass Effect */
-  --glass-bg: rgba(255, 255, 255, 0.1);
-  --glass-border: rgba(0, 82, 204, 0.2);
-  --glass-blur: 10px;
-  
-  /* Spacing */
-  --spacing-xs: 0.25rem;
-  --spacing-sm: 0.5rem;
-  --spacing-md: 1rem;
-  --spacing-lg: 1.5rem;
-  --spacing-xl: 2rem;
-  
-  /* Border Radius */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
-  
+  --ds-primary: #3B82F6;
+  --ds-primary-bright: #60A5FA;
+  --ds-primary-dark: #2563EB;
+  --ds-primary-glow: rgba(59, 130, 246, 0.35);
+
+  --ds-accent-purple: #A855F7;
+  --ds-accent-purple-glow: rgba(168, 85, 247, 0.3);
+
+  --ds-success: #00FFA3;
+  --ds-success-glow: rgba(0, 255, 163, 0.3);
+
+  --ds-warning: #F59E0B;
+  --ds-danger: #EF4444;
+
+  /* Surfaces */
+  --ds-bg-root: #020617;
+  --ds-bg-elevated: #0B1120;
+  --ds-bg-card: rgba(255, 255, 255, 0.03);
+  --ds-bg-card-hover: rgba(255, 255, 255, 0.07);
+  --ds-bg-highlight: rgba(255, 255, 255, 0.1);
+  --ds-bg-sidebar: rgba(2, 6, 23, 0.85);
+  --ds-bg-topbar: rgba(2, 6, 23, 0.6);
+  --ds-bg-nowplaying: rgba(11, 17, 32, 0.9);
+  --ds-bg-input: rgba(255, 255, 255, 0.06);
+
+  /* Glass */
+  --ds-glass-blur: blur(12px);
+  --ds-glass-bg: rgba(255, 255, 255, 0.03);
+  --ds-glass-border: 1px solid rgba(255, 255, 255, 0.06);
+  --ds-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+
+  /* Text */
+  --ds-text-primary: #F1F5F9;
+  --ds-text-secondary: #94A3B8;
+  --ds-text-muted: #475569;
+  --ds-text-on-primary: #020617;
+
+  /* Borders */
+  --ds-border: rgba(255, 255, 255, 0.06);
+  --ds-border-glow: rgba(59, 130, 246, 0.3);
+
+  /* Shadows & Neon */
+  --ds-shadow-card: 0 8px 32px rgba(0, 0, 0, 0.4);
+  --ds-shadow-elevated: 0 16px 48px rgba(0, 0, 0, 0.6);
+  --ds-neon-blue: 0 0 20px rgba(59, 130, 246, 0.4), 0 0 60px rgba(59, 130, 246, 0.1);
+  --ds-neon-purple: 0 0 20px rgba(168, 85, 247, 0.4), 0 0 60px rgba(168, 85, 247, 0.1);
+  --ds-neon-green: 0 0 20px rgba(0, 255, 163, 0.4), 0 0 60px rgba(0, 255, 163, 0.1);
+
+  /* Tooltip compat */
+  --ds-tooltip-bg: rgba(15, 23, 42, 0.95);
+  --ds-tooltip-text: #F1F5F9;
+
+  /* Scrollbar */
+  --ds-scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --ds-scrollbar-thumb-hover: rgba(255, 255, 255, 0.2);
+
+  /* Radii */
+  --ds-radius-sm: 8px;
+  --ds-radius-md: 12px;
+  --ds-radius-lg: 16px;
+  --ds-radius-xl: 20px;
+  --ds-radius-pill: 500px;
+
+  /* Typography */
+  --ds-font-sans: 'DM Sans', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ds-font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
   /* Transitions */
-  --transition-fast: 150ms ease;
-  --transition-normal: 300ms ease;
-  --transition-slow: 500ms ease;
+  --ds-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ds-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ds-duration-fast: 150ms;
+  --ds-duration-normal: 250ms;
+  --ds-duration-slow: 400ms;
 }
 
-/* Dark Mode */
-[data-theme="dark"] {
-  --color-bg-primary: #000000;
-  --color-bg-secondary: #0a0a0a;
-  --color-accent: #0066FF;
-  --color-accent-light: #00A3FF;
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #A0AEC0;
-  --color-border: rgba(0, 102, 255, 0.3);
-  
-  --glass-bg: rgba(0, 0, 0, 0.2);
-  --glass-border: rgba(0, 102, 255, 0.3);
+/* ─── Light Mode ──────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --ds-primary: #3B82F6;
+  --ds-primary-bright: #2563EB;
+  --ds-primary-glow: rgba(59, 130, 246, 0.2);
+  --ds-accent-purple: #A855F7;
+  --ds-accent-purple-glow: rgba(168, 85, 247, 0.15);
+  --ds-success: #10B981;
+  --ds-success-glow: rgba(16, 185, 129, 0.2);
+
+  --ds-bg-root: #F8FAFC;
+  --ds-bg-elevated: #FFFFFF;
+  --ds-bg-card: rgba(0, 0, 0, 0.03);
+  --ds-bg-card-hover: rgba(0, 0, 0, 0.06);
+  --ds-bg-highlight: rgba(0, 0, 0, 0.08);
+  --ds-bg-sidebar: rgba(248, 250, 252, 0.9);
+  --ds-bg-topbar: rgba(248, 250, 252, 0.7);
+  --ds-bg-nowplaying: rgba(255, 255, 255, 0.92);
+  --ds-bg-input: rgba(0, 0, 0, 0.04);
+  --ds-glass-bg: rgba(255, 255, 255, 0.6);
+  --ds-glass-border: 1px solid rgba(0, 0, 0, 0.06);
+  --ds-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+
+  --ds-text-primary: #0F172A;
+  --ds-text-secondary: #64748B;
+  --ds-text-muted: #94A3B8;
+  --ds-text-on-primary: #FFFFFF;
+
+  --ds-border: rgba(0, 0, 0, 0.06);
+  --ds-border-glow: rgba(59, 130, 246, 0.2);
+  --ds-shadow-card: 0 4px 16px rgba(0, 0, 0, 0.06);
+  --ds-neon-blue: 0 0 16px rgba(59, 130, 246, 0.2);
+  --ds-neon-purple: 0 0 16px rgba(168, 85, 247, 0.2);
+  --ds-neon-green: 0 0 16px rgba(16, 185, 129, 0.2);
+  --ds-scrollbar-thumb: rgba(0, 0, 0, 0.12);
+  --ds-scrollbar-thumb-hover: rgba(0, 0, 0, 0.2);
 }
 
-/* Reset and Base Styles */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+/* ─── Reset ───────────────────────────────────────────────────────────────── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--ds-font-sans);
+  background-color: var(--ds-bg-root);
+  color: var(--ds-text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--color-bg-primary);
-  color: var(--color-text-primary);
-  transition: background-color var(--transition-normal), color var(--transition-normal);
+  overflow-x: hidden;
+  transition: background-color var(--ds-duration-normal) var(--ds-ease),
+    color var(--ds-duration-normal) var(--ds-ease);
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+::selection { background: var(--ds-primary); color: var(--ds-text-on-primary); }
+code { font-family: var(--ds-font-mono); }
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--ds-scrollbar-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ds-scrollbar-thumb-hover); }
+
+/* ─── Utilities ──────────────────────────────────────────────────────────── */
+.hide-scroll::-webkit-scrollbar { display: none; }
+.hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+.ds-text-limit { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+.glass {
+  backdrop-filter: var(--ds-glass-blur);
+  -webkit-backdrop-filter: var(--ds-glass-blur);
+  background: var(--ds-glass-bg);
+  border: var(--ds-glass-border);
+  box-shadow: var(--ds-glass-shadow);
 }
 
-/* Utility Classes */
-.glass-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
-  transition: all var(--transition-normal);
-}
+:focus-visible { outline: 2px solid var(--ds-primary); outline-offset: 2px; border-radius: var(--ds-radius-sm); }
+button:focus:not(:focus-visible), input:focus:not(:focus-visible) { outline: none; }
+input::placeholder { color: var(--ds-text-muted); }
+input:focus, button:focus { outline: none; }
 
-.glass-card:hover {
-  background: rgba(var(--glass-bg), 0.3);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
-  transform: translateY(-2px);
+/* ─── Primary Button ─────────────────────────────────────────────────────── */
+.ds-btn-primary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 0 28px; height: 44px; border-radius: var(--ds-radius-pill);
+  background: var(--ds-primary); color: var(--ds-text-on-primary);
+  font-weight: 700; font-size: 14px; border: none; cursor: pointer;
+  transition: all var(--ds-duration-fast) var(--ds-ease);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
 }
+.ds-btn-primary:hover { background: var(--ds-primary-bright); transform: scale(1.04); box-shadow: var(--ds-neon-blue); }
+.ds-btn-primary:active { transform: scale(0.98); }
+
+/* ─── Secondary Button ───────────────────────────────────────────────────── */
+.ds-btn-secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 0 20px; height: 36px; border-radius: var(--ds-radius-pill);
+  background: rgba(255, 255, 255, 0.05); backdrop-filter: blur(8px);
+  color: var(--ds-text-primary); font-weight: 600; font-size: 13px;
+  border: var(--ds-glass-border); cursor: pointer;
+  transition: all var(--ds-duration-fast) var(--ds-ease);
+}
+.ds-btn-secondary:hover { background: rgba(255, 255, 255, 0.1); transform: scale(1.02); }
+
+/* ─── Keyframes ──────────────────────────────────────────────────────────── */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideIn { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+@keyframes cardIn { from { opacity: 0; transform: translateY(16px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pulseGlow { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes shimmer { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.6; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes orbFloat1 { 0%, 100% { transform: translate(0,0) scale(1); } 33% { transform: translate(60px,-40px) scale(1.1); } 66% { transform: translate(-30px,30px) scale(0.95); } }
+@keyframes orbFloat2 { 0%, 100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-50px,50px) scale(1.15); } 66% { transform: translate(40px,-20px) scale(0.9); } }
+@keyframes orbFloat3 { 0%, 100% { transform: translate(0,0) scale(1); } 33% { transform: translate(30px,60px) scale(1.05); } 66% { transform: translate(-60px,-30px) scale(1.1); } }
+@keyframes nowPlayingPulse { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+
+.neon-active { color: var(--ds-primary) !important; }
