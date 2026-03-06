@@ -7,7 +7,7 @@ import logging
 import os
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/v1", tags=["search"])
+router = APIRouter(tags=["search"])
 
 # Check if AWS services are configured
 AWS_CONFIGURED = all([

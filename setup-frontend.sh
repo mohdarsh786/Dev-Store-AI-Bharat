@@ -15,11 +15,19 @@ cd frontend
 echo "Installing dependencies..."
 npm install
 
-# Copy environment template
+# Create single environment file
 if [ ! -f .env ]; then
-    echo "Creating .env file from template..."
-    cp .env.example .env
-    echo "Please edit frontend/.env with your configuration"
+    echo "Creating frontend/.env..."
+    cat > .env << 'EOF'
+# DevStore Frontend Environment
+VITE_API_URL=http://localhost:8000
+VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_API_TIMEOUT=30000
+VITE_ENABLE_AUTH=false
+VITE_ENABLE_ANALYTICS=false
+VITE_ENVIRONMENT=development
+EOF
+    echo "Please edit frontend/.env with your deployed API endpoint"
 fi
 
 echo ""

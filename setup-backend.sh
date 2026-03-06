@@ -27,11 +27,24 @@ pip install --upgrade pip
 echo "Installing dependencies..."
 pip install -r requirements.txt
 
-# Copy environment template
+# Create single environment file
 if [ ! -f .env ]; then
-    echo "Creating .env file from template..."
-    cp .env.example .env
-    echo "Please edit backend/.env with your configuration"
+    echo "Creating backend/.env..."
+    cat > .env << 'EOF'
+# DevStore Backend Environment
+DATABASE_URL=postgresql://user:password@localhost:5432/devstore
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+OPENSEARCH_HOST=localhost
+OPENSEARCH_PORT=443
+AWS_REGION=us-east-1
+S3_BUCKET_BOILERPLATE=devstore-boilerplate
+S3_BUCKET_CRAWLER_DATA=devstore-crawler-data
+ENVIRONMENT=development
+LOG_LEVEL=INFO
+EOF
+    echo "Please edit backend/.env with your real configuration"
 fi
 
 echo ""

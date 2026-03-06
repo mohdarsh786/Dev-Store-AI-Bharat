@@ -12,7 +12,7 @@ fi
 
 # Check if .env file exists
 if [ ! -f ".env" ]; then
-    echo "Error: .env file not found. Copy .env.ec2.example to .env and configure it."
+    echo "Error: .env file not found. Create .env and configure it."
     exit 1
 fi
 

@@ -327,31 +327,23 @@ class OpenSearchClient:
             logger.error(f"KNN search failed in '{index_name}': {e}")
             raise OpenSearchClientError(f"Could not perform KNN search in '{index_name}'") from e
     
-    def health_check(self) -> Dict[str, Any]:
+    def health_check_sync(self) -> Dict[str, Any]:
         """
         Perform a health check on the OpenSearch connection.
-        
+
         Returns:
-            Dictionary with health check results:
-            {
-                "status": "healthy" | "unhealthy",
-                "cluster_name": str,
-                "cluster_status": str,
-                "response_time_ms": float,
-                "error": str (if unhealthy)
-            }
+            Dictionary with health check results
         """
         start_time = time.time()
         result = {
             "status": "unhealthy",
             "response_time_ms": 0.0
         }
-        
+
         try:
-            # Get cluster health
             health = self._client.cluster.health()
             info = self._client.info()
-            
+
             response_time = (time.time() - start_time) * 1000
             result.update({
                 "status": "healthy",
@@ -359,18 +351,31 @@ class OpenSearchClient:
                 "cluster_status": health.get('status'),
                 "response_time_ms": round(response_time, 2)
             })
-            
+
             logger.info(
                 f"OpenSearch health check passed "
                 f"(cluster_status={health.get('status')}, response_time={response_time:.2f}ms)"
             )
-            
+
         except Exception as e:
             result["error"] = str(e)
             logger.error(f"OpenSearch health check failed: {e}")
-        
+
         return result
-    
+
+    async def connect(self) -> None:
+        """Async wrapper for connection (client is initialized in __init__)."""
+        pass
+
+    async def disconnect(self) -> None:
+        """Async wrapper for disconnection."""
+        self.close()
+
+    async def health_check(self) -> bool:
+        """Async wrapper for health check. Returns True if healthy."""
+        result = self.health_check_sync()
+        return result.get("status") == "healthy"
+
     def close(self) -> None:
         """Close the OpenSearch client connection."""
         if self._client:
@@ -390,3 +395,4 @@ class OpenSearchClient:
 
 # Global OpenSearch client instance (can be initialized when needed)
 # Usage: from clients.opensearch import OpenSearchClient; os_client = OpenSearchClient()
+

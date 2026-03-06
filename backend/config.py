@@ -2,7 +2,8 @@
 Configuration management for DevStore backend
 """
 from pydantic_settings import BaseSettings
-from typing import Optional
+from pydantic import field_validator
+from typing import Optional, List, Union
 
 
 class Settings(BaseSettings):
@@ -43,7 +44,15 @@ class Settings(BaseSettings):
     # API
     api_rate_limit: int = 100
     api_timeout: int = 30
-    cors_origins: list = ["*"]
+    cors_origins: Union[List[str], str] = ["*"]
+    
+    @field_validator('cors_origins', mode='before')
+    @classmethod
+    def parse_cors_origins(cls, v):
+        """Parse CORS origins from comma-separated string or list"""
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(',')]
+        return v
     
     # Environment
     environment: str = "development"
@@ -54,9 +63,14 @@ class Settings(BaseSettings):
     server_port: int = 8000
     workers: int = 4
     
+    # Ingestion (optional fields)
+    ingestion_github_api_token: Optional[str] = None
+    ingestion_sqs_queue_url: Optional[str] = None
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"  # Ignore extra fields in .env
 
 
 # Global settings instance

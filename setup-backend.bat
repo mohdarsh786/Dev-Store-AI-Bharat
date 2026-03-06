@@ -85,15 +85,24 @@ if errorlevel 1 (
 echo [OK] Dependencies installed successfully.
 echo.
 
-REM Copy environment template
+REM Create single environment file
 if not exist .env (
-    if exist .env.example (
-        echo Creating .env file from template...
-        copy .env.example .env
-        echo [OK] .env created. Please edit backend\.env with your AWS/DB configuration.
-    ) else (
-        echo [WARNING] .env.example not found. Please create backend\.env manually.
-    )
+    echo Creating backend\.env...
+    (
+        echo # DevStore Backend Environment
+        echo DATABASE_URL=postgresql://user:password@localhost:5432/devstore
+        echo REDIS_HOST=localhost
+        echo REDIS_PORT=6379
+        echo REDIS_PASSWORD=
+        echo OPENSEARCH_HOST=localhost
+        echo OPENSEARCH_PORT=443
+        echo AWS_REGION=us-east-1
+        echo S3_BUCKET_BOILERPLATE=devstore-boilerplate
+        echo S3_BUCKET_CRAWLER_DATA=devstore-crawler-data
+        echo ENVIRONMENT=development
+        echo LOG_LEVEL=INFO
+    ) > .env
+    echo [OK] .env created. Please edit backend\.env with your real AWS/DB configuration.
 ) else (
     echo [INFO] .env already exists. Skipping.
 )

@@ -53,7 +53,7 @@ pip install -r requirements.txt --upgrade || log_error "Failed to install depend
 # Step 4: Check environment variables
 log_info "Checking environment configuration..."
 if [ ! -f "$APP_DIR/.env" ]; then
-    log_error ".env file not found! Copy .env.ec2.example to .env and configure it."
+    log_error ".env file not found! Create $APP_DIR/.env and configure it."
     exit 1
 fi
 

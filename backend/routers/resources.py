@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
-router = APIRouter(prefix="/api/v1", tags=["resources"])
+router = APIRouter(tags=["resources"])
 
 
 class Resource(BaseModel):

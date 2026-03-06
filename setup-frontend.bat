@@ -55,16 +55,19 @@ if errorlevel 1 (
 echo [OK] Dependencies installed successfully.
 echo.
 
-REM Copy environment template
+REM Create single environment file
 if not exist .env (
-    if exist .env.example (
-        echo Creating .env file from template...
-        copy .env.example .env
-        echo [OK] .env created. Please edit frontend\.env with your API endpoint configuration.
-    ) else (
-        echo [WARNING] .env.example not found. Please create frontend\.env manually.
-        echo [INFO] Example: VITE_API_BASE_URL=http://localhost:8000
-    )
+    echo Creating frontend\.env...
+    (
+        echo # DevStore Frontend Environment
+        echo VITE_API_URL=http://localhost:8000
+        echo VITE_API_BASE_URL=http://localhost:8000/api/v1
+        echo VITE_API_TIMEOUT=30000
+        echo VITE_ENABLE_AUTH=false
+        echo VITE_ENABLE_ANALYTICS=false
+        echo VITE_ENVIRONMENT=development
+    ) > .env
+    echo [OK] .env created. Please edit frontend\.env with your deployed API endpoint.
 ) else (
     echo [INFO] .env already exists. Skipping.
 )
@@ -80,7 +83,7 @@ echo  Frontend setup complete!
 echo ================================================
 echo.
 echo Next steps:
-echo   1. Edit frontend\.env with your API endpoint (VITE_API_BASE_URL)
+echo   1. Edit frontend\.env with your API endpoint (VITE_API_URL)
 echo   2. Start the development server:
 echo      cd frontend ^&^& npm run dev
 echo   3. Build for production:

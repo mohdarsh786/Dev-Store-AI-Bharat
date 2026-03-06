@@ -182,3 +182,101 @@ class RankingService:
         
         logger.debug(f"Final score: {final_score}")
         return max(0.0, min(1.0, final_score))
+
+    def compute_trending_score(
+        self,
+        recent_downloads: int = 0,
+        recent_views: int = 0,
+        recent_bookmarks: int = 0,
+        time_window_days: int = 7,
+        growth_rate: float = 0.0
+    ) -> float:
+        """
+        Compute trending score based on recent activity and growth.
+        
+        Weights:
+        - Recent downloads: 40%
+        - Recent views: 20%
+        - Recent bookmarks: 20%
+        - Growth rate: 20%
+        
+        Args:
+            recent_downloads: Number of downloads in time window
+            recent_views: Number of views in time window
+            recent_bookmarks: Number of bookmarks in time window
+            time_window_days: Time window in days
+            growth_rate: Growth rate percentage (e.g., 50.0 for 50% growth)
+            
+        Returns:
+            Trending score in range [0, 1]
+        """
+        # Normalize activity metrics (assuming max values per week)
+        max_downloads_per_week = 1000
+        max_views_per_week = 5000
+        max_bookmarks_per_week = 500
+        
+        # Adjust max values based on time window
+        time_factor = time_window_days / 7.0
+        
+        download_score = min(recent_downloads / (max_downloads_per_week * time_factor), 1.0)
+        view_score = min(recent_views / (max_views_per_week * time_factor), 1.0)
+        bookmark_score = min(recent_bookmarks / (max_bookmarks_per_week * time_factor), 1.0)
+        
+        # Normalize growth rate (cap at 200% growth)
+        growth_score = min(max(growth_rate / 200.0, -0.5), 1.0)
+        
+        score = (
+            download_score * 0.4 +
+            view_score * 0.2 +
+            bookmark_score * 0.2 +
+            growth_score * 0.2
+        )
+        
+        logger.debug(
+            f"Trending: downloads={recent_downloads}, views={recent_views}, "
+            f"bookmarks={recent_bookmarks}, growth={growth_rate}% -> {score}"
+        )
+        return max(0.0, min(1.0, score))
+    
+    def compute_category_rankings(
+        self,
+        resources: List[Dict[str, Any]],
+        score_field: str = 'final_score'
+    ) -> List[Dict[str, Any]]:
+        """
+        Compute category rankings for resources.
+        
+        Groups resources by type and assigns rank within each category.
+        
+        Args:
+            resources: List of resource dictionaries with 'type' and score field
+            score_field: Name of the field containing the score
+            
+        Returns:
+            List of resources with 'category_rank' field added
+        """
+        # Group by type
+        by_type: Dict[str, List[Dict[str, Any]]] = {}
+        for resource in resources:
+            resource_type = resource.get('type', 'unknown')
+            if resource_type not in by_type:
+                by_type[resource_type] = []
+            by_type[resource_type].append(resource)
+        
+        # Rank within each category
+        ranked_resources = []
+        for resource_type, type_resources in by_type.items():
+            # Sort by score descending
+            sorted_resources = sorted(
+                type_resources,
+                key=lambda r: r.get(score_field, 0.0),
+                reverse=True
+            )
+            
+            # Assign ranks
+            for rank, resource in enumerate(sorted_resources, start=1):
+                resource['category_rank'] = rank
+                ranked_resources.append(resource)
+        
+        logger.debug(f"Ranked {len(ranked_resources)} resources across {len(by_type)} categories")
+        return ranked_resources
