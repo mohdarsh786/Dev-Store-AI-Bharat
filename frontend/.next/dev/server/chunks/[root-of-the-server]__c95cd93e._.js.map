@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 46, "column": 0}, "map": {"version":3,"sources":["file:///C:/hackathon/Dev-Store-AI-Bharat/frontend/app/api/health/route.ts"],"sourcesContent":["import { NextResponse } from \"next/server\";\r\n\r\nconst BACKEND_URL = process.env.BACKEND_URL || \"http://localhost:8000\";\r\n\r\nexport async function GET() {\r\n    try {\r\n        const response = await fetch(`${BACKEND_URL}/api/v1/health`, {\r\n            next: { revalidate: 10 },\r\n        });\r\n\r\n        if (!response.ok) {\r\n            return NextResponse.json({ status: \"offline\" }, { status: 503 });\r\n        }\r\n\r\n        const data = await response.json();\r\n        return NextResponse.json({ status: \"online\", ...data });\r\n    } catch {\r\n        return NextResponse.json({ status: \"offline\" }, { status: 503 });\r\n    }\r\n}\r\n"],"names":[],"mappings":";;;;AAAA;;AAEA,MAAM,cAAc,6DAA2B;AAExC,eAAe;IAClB,IAAI;QACA,MAAM,WAAW,MAAM,MAAM,GAAG,YAAY,cAAc,CAAC,EAAE;YACzD,MAAM;gBAAE,YAAY;YAAG;QAC3B;QAEA,IAAI,CAAC,SAAS,EAAE,EAAE;YACd,OAAO,gJAAY,CAAC,IAAI,CAAC;gBAAE,QAAQ;YAAU,GAAG;gBAAE,QAAQ;YAAI;QAClE;QAEA,MAAM,OAAO,MAAM,SAAS,IAAI;QAChC,OAAO,gJAAY,CAAC,IAAI,CAAC;YAAE,QAAQ;YAAU,GAAG,IAAI;QAAC;IACzD,EAAE,OAAM;QACJ,OAAO,gJAAY,CAAC,IAAI,CAAC;YAAE,QAAQ;QAAU,GAAG;YAAE,QAAQ;QAAI;IAClE;AACJ"}}]
-}
