@@ -1,0 +1,344 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Dev-Store AI Bharat — Global CSS
+   Merged from: index.css + theme.css + App.css + trinity.css
+   Glassmorphism design tokens are preserved exactly.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Fira+Code:wght@400;500&display=swap');
+
+/* ─── CSS Custom Properties (Design Tokens) ─────────────────────────────── */
+
+:root {
+  /* Light Mode */
+  --color-bg-primary: #FFFFFF;
+  --color-bg-secondary: #F8F9FA;
+  --color-accent: #3B82F6;
+  --color-accent-light: #60A5FA;
+  --color-text-primary: #000000;
+  --color-text-secondary: #4A5568;
+  --color-border: rgba(0, 82, 204, 0.2);
+
+  /* Glass Effect */
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(0, 82, 204, 0.2);
+  --glass-blur: 12px;
+
+  /* Spacing */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 300ms ease;
+  --transition-slow: 500ms ease;
+
+  /* Tooltip vars */
+  --ds-tooltip-bg: rgba(10, 16, 32, 0.92);
+  --ds-tooltip-text: rgba(255, 255, 255, 0.9);
+
+  /* Theme tokens from theme.css */
+  --bg-gradient-start: #667eea;
+  --bg-gradient-end: #764ba2;
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.8);
+  --accent-color: #3B82F6;
+  --accent-hover: #2563EB;
+  --shadow-color: rgba(0, 0, 0, 0.2);
+  --success-color: #10b981;
+  --warning-color: #f59e0b;
+  --scroll-thumb: rgba(0, 0, 0, 0.1);
+  --cat-btn-hover: rgba(59, 130, 246, 0.15);
+  --placeholder-color: rgba(0, 0, 0, 0.55);
+}
+
+[data-theme="dark"] {
+  --color-bg-primary: #020617;
+  --color-bg-secondary: #0a1020;
+  --color-accent: #3B82F6;
+  --color-accent-light: #60A5FA;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #A0AEC0;
+  --color-border: rgba(59, 130, 246, 0.3);
+
+  --glass-bg: rgba(2, 6, 23, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.1);
+
+  --bg-gradient-start: #0f0c29;
+  --bg-gradient-end: #24243e;
+  --text-primary: #FFFFFF;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --accent-color: #3B82F6;
+  --accent-hover: #60A5FA;
+  --glass-bg: rgba(0, 0, 0, 0.3);
+  --glass-border: rgba(255, 255, 255, 0.15);
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --scroll-thumb: rgba(255, 255, 255, 0.08);
+  --cat-btn-hover: rgba(255, 255, 255, 0.07);
+  --placeholder-color: rgba(255, 255, 255, 0.2);
+}
+
+/* ─── Reset & Base ───────────────────────────────────────────────────────── */
+
+*,
+::before,
+::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto',
+    'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #020617;
+  color: #ffffff;
+  overflow-x: hidden;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+code {
+  font-family: 'JetBrains Mono', 'Fira Code', source-code-pro, Menlo, Monaco,
+    Consolas, 'Courier New', monospace;
+}
+
+/* ─── Scrollbar ──────────────────────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.hide-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ─── Glassmorphism Utilities ────────────────────────────────────────────── */
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1);
+  transition: all var(--transition-normal);
+  overflow: hidden;
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 48px var(--shadow-color);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.glass-button {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  padding: 14px 28px;
+  color: var(--text-primary);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  outline: none;
+}
+
+.glass-button:hover {
+  background: var(--accent-color);
+  color: white;
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.6);
+  transform: translateY(-2px);
+}
+
+.glass-button:active {
+  transform: translateY(0);
+}
+
+.glass-input {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  padding: 16px 20px;
+  color: var(--text-primary);
+  font-size: 16px;
+  width: 100%;
+  transition: all var(--transition-normal);
+  outline: none;
+}
+
+.glass-input::placeholder {
+  color: var(--text-secondary);
+}
+
+.glass-input:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 30px rgba(59, 130, 246, 0.4);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* ─── Badge Styles ───────────────────────────────────────────────────────── */
+
+.badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  transition: all 200ms ease;
+}
+
+.badge-api    { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+.badge-model  { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; }
+.badge-dataset{ background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; }
+.badge-free   { background: var(--success-color); color: white; }
+.badge-paid   { background: var(--warning-color); color: white; }
+
+.score-badge {
+  background: linear-gradient(135deg, var(--accent-color) 0%, #00a3ff 100%);
+  color: white;
+  padding: 10px 20px;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 18px;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+}
+
+/* ─── Focus Reset ────────────────────────────────────────────────────────── */
+
+input:focus,
+button:focus {
+  outline: none;
+}
+
+input::placeholder {
+  font-style: italic;
+  color: var(--placeholder-color);
+}
+
+/* ─── Keyframe Animations ────────────────────────────────────────────────── */
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px currentColor; }
+  50%       { opacity: 0.4; box-shadow: none; }
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.45; }
+  50%       { opacity: 0.8; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes float1 {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(10%, 10%); }
+}
+
+@keyframes float2 {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(-10%, -5%); }
+}
+
+@keyframes float3 {
+  from { transform: translate(0, 0); }
+  to   { transform: translate(5%, -10%); }
+}
+
+@keyframes pulseNeon {
+  0%, 100% { box-shadow: 0 0 4px #3B82F6, 0 0 10px rgba(59,130,246,0.27); }
+  50%       { box-shadow: 0 0 12px #3B82F6, 0 0 20px rgba(59,130,246,0.4); }
+}
+
+/* ─── Interactive State Classes ──────────────────────────────────────────── */
+
+.cat-btn:hover {
+  background: var(--cat-btn-hover) !important;
+}
+
+.neon-active {
+  animation: pulseNeon 2s infinite ease-in-out;
+}
+
+/* ─── Trinity Dashboard Styles (from trinity.css) ───────────────────────── */
+
+.trinity-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+
+.trinity-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  padding: 24px;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.trinity-card:hover {
+  border-color: rgba(59, 130, 246, 0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Responsive Utilities ───────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .trinity-grid {
+    grid-template-columns: 1fr;
+  }
+}

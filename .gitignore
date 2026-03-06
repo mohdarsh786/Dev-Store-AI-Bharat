@@ -2,6 +2,7 @@
 .env
 .env.local
 .env.production
+.env.*.local
 
 # OS
 .DS_Store
@@ -29,12 +30,17 @@ backend/htmlcov/
 backend/*.zip
 backend/package/
 
-# Frontend specific (Node)
+# Next.js frontend (frontend/)
 frontend/node_modules/
+frontend/.next/
+frontend/out/
 frontend/dist/
-frontend/dist-ssr/
-frontend/.vite/
 frontend/coverage/
+frontend/.turbo/
+frontend/tsconfig.tsbuildinfo
+
+# Vercel
+.vercel/
 
 # AWS
 .aws/
