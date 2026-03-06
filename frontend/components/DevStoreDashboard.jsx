@@ -204,7 +204,10 @@ function ToolCard({ tool, index, isDark = true }) {
           : dk ? "0 2px 12px rgba(0,0,0,0.3)" : "0 2px 12px rgba(59,130,246,0.06)",
         transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
         animationDelay: `${index * 60}ms`,
-        animation: "cardIn 0.4s ease both",
+        animationName: "cardIn",
+        animationDuration: "0.4s",
+        animationTimingFunction: "ease",
+        animationFillMode: "both",
       }}
     >
       {/* Top shimmer line */}
@@ -396,7 +399,11 @@ function SkeletonCard({ index, isDark = true }) {
       backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
       border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)"}`,
       minHeight: 240,
-      animationDelay: `${index * 80}ms`, animation: "shimmer 1.6s ease infinite",
+      animationDelay: `${index * 80}ms`,
+      animationName: "shimmer",
+      animationDuration: "1.6s",
+      animationTimingFunction: "ease",
+      animationIterationCount: "infinite",
     }}>
       {[44, 10, 13, 10, 10, 40].map((h, i) => (
         <div key={i} style={{
@@ -1069,7 +1076,7 @@ export default function DevStoreDashboard() {
           <aside className={`ds-sidebar ${isMobile ? "ds-sidebar--mobile" : ""} ${!isMobile && sidebarCollapsed ? "ds-sidebar--collapsed" : ""}`}>
             {!isMobile && (
               <button className="ds-sidebar__toggle" onClick={() => setSidebarCollapsed(c => !c)} aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}>
-                <Icon d={Icons.ChevronR} size={14} />
+                <Icon d={Icons.ChevronR} size={18} />
               </button>
             )}
             <div className="ds-sidebar__header">

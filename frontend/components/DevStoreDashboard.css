@@ -112,14 +112,14 @@
 
 /* Collapse Toggle */
 .ds-sidebar__toggle {
-    position: absolute; top: 24px; right: -14px;
-    width: 28px; height: 28px; border-radius: 50%;
+    position: absolute; top: 24px; right: -18px;
+    width: 36px; height: 36px; border-radius: 50%;
     background: var(--ds-bg-elevated);
-    border: var(--ds-glass-border); cursor: pointer;
+    border: 1px solid rgba(255, 255, 255, 0.2); cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    color: var(--ds-text-secondary); z-index: 60;
+    color: var(--ds-text-primary); z-index: 60;
     transition: all var(--ds-duration-fast) var(--ds-ease);
-    box-shadow: var(--ds-shadow-card);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .ds-sidebar__toggle:hover { color: var(--ds-primary); box-shadow: var(--ds-neon-blue); }
