@@ -98,7 +98,18 @@ const MOCK_TOOLS = [
 
 // Map a backend resource to ToolCard-compatible shape
 function mapResource(r, index = 0) {
-  const meta = TYPE_META[r.resource_type] || { color: "#6B7280", emoji: "📦" };
+  // Normalize resource_type to match frontend categories (capitalize first letter)
+  const normalizeType = (type) => {
+    if (!type) return "API";
+    const lower = type.toLowerCase();
+    if (lower === "api") return "API";
+    if (lower === "model") return "Model";
+    if (lower === "dataset") return "Dataset";
+    return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+  };
+  
+  const resourceType = normalizeType(r.resource_type || r.type);
+  const meta = TYPE_META[resourceType] || { color: "#6B7280", emoji: "📦" };
   
   // Detect source from URL if not provided
   const detectSource = (url) => {
@@ -122,15 +133,15 @@ function mapResource(r, index = 0) {
   let installCommand = r.install_command || r.endpoint_url || "";
   if (!installCommand) {
     const slug = r.name?.replace(/\s+/g, "-").toLowerCase() || "resource";
-    if (r.resource_type === "API") installCommand = `curl -X POST https://api.devstore.ai/v1/${slug}`;
-    else if (r.resource_type === "Model") installCommand = `pip install devstore && dv.load("${slug}")`;
+    if (resourceType === "API") installCommand = `curl -X POST https://api.devstore.ai/v1/${slug}`;
+    else if (resourceType === "Model") installCommand = `pip install devstore && dv.load("${slug}")`;
     else installCommand = `load_dataset("${slug}", split="train")`;
   }
 
   return {
     id: r.id || String(Math.random()),
     name: r.name,
-    category: r.resource_type || "API",
+    category: resourceType,  // Fixed: now properly capitalized
     description: r.description || "",
     installCommand,
     latency,
@@ -989,7 +1000,9 @@ export default function DevStoreDashboard() {
   const { data: trendingData, error: trendingError, isValidating: trendingLoading } = useSWR(
     !query ? [`trending`, activeCategory, isTopChart, activeDiscovery] : null,
     () => {
-      const filters = { resource_type: activeCategory === "All" ? null : activeCategory, limit: 40 };
+      // Convert category to lowercase for backend API
+      const categoryLower = activeCategory === "All" ? null : activeCategory.toLowerCase();
+      const filters = { resource_type: categoryLower, limit: 40 };
       if (activeDiscovery === "Top Free") {
         filters.pricing_type = "free";
         filters.sort = "popularity";
@@ -1057,7 +1070,9 @@ export default function DevStoreDashboard() {
     setSearchLoading(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const resp = await apiService.search(query, { resource_types: activeCategory === "All" ? null : [activeCategory], limit: 40 });
+        // Convert category to lowercase for backend API
+        const categoryLower = activeCategory === "All" ? null : activeCategory.toLowerCase();
+        const resp = await apiService.search(query, { resource_types: categoryLower ? [categoryLower] : null, limit: 40 });
         setFiltered((resp.results || []).map((r, idx) => mapResource(r, idx)));
         setApiOnline(true);
       } catch (err) {
