@@ -5,8 +5,12 @@ const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
-        const params = searchParams.toString();
-        const url = `${BACKEND_URL}/api/v1/resources${params ? `?${params}` : ""}`;
+        const q = searchParams.get('q') || '';
+        const limit = searchParams.get('limit') || '20';
+        const offset = searchParams.get('offset') || '0';
+        
+        // Use the correct backend endpoint
+        const url = `${BACKEND_URL}/api/resources/search?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`;
 
         const response = await fetch(url, {
             headers: { "Content-Type": "application/json" },
