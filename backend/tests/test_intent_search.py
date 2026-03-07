@@ -51,7 +51,7 @@ def test_intent_search():
             
     except requests.exceptions.ConnectionError:
         print("\n❌ Error: Cannot connect to backend")
-        print("Make sure backend is running: uvicorn main:app --host 0.0.0.0 --port 8000")
+        print("Make sure backend is running: uvicorn api_gateway:app --host 0.0.0.0 --port 8000")
     except Exception as e:
         print(f"\n❌ Error: {e}")
     

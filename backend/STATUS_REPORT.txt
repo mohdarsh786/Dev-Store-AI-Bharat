@@ -58,7 +58,7 @@ API Intent Search:        ✅ PASS
 
 1. Start Backend Server:
    cd backend
-   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+   uvicorn api_gateway:app --host 0.0.0.0 --port 8000 --reload
 
 2. Test Endpoints:
    # Health check

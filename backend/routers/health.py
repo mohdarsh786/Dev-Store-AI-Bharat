@@ -8,6 +8,13 @@ from datetime import datetime
 router = APIRouter()
 
 
+def _is_healthy(result) -> bool:
+    """Normalize boolean and dict-based health checks."""
+    if isinstance(result, dict):
+        return result.get("status") == "healthy"
+    return bool(result)
+
+
 @router.get("/health")
 async def health_check():
     """
@@ -44,13 +51,13 @@ async def detailed_health_check(req: Request):
         checks["redis_error"] = str(e)
     
     try:
-        checks["database"] = await req.app.state.db.health_check()
+        checks["database"] = req.app.state.db.health_check()
     except Exception as e:
         checks["database"] = False
         checks["database_error"] = str(e)
     
     try:
-        checks["opensearch"] = await req.app.state.opensearch.health_check()
+        checks["opensearch"] = req.app.state.opensearch.health_check()
     except Exception as e:
         checks["opensearch"] = False
         checks["opensearch_error"] = str(e)
@@ -60,10 +67,10 @@ async def detailed_health_check(req: Request):
     
     # Overall status
     all_healthy = all([
-        checks.get("redis", False),
-        checks.get("database", False),
-        checks.get("opensearch", False),
-        checks.get("bedrock", False)
+        _is_healthy(checks.get("redis", False)),
+        _is_healthy(checks.get("database", False)),
+        _is_healthy(checks.get("opensearch", False)),
+        _is_healthy(checks.get("bedrock", False)),
     ])
     
     response_time = time.time() - start_time

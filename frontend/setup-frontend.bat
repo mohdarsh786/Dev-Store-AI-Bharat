@@ -40,13 +40,10 @@ if not exist ".env.local" (
     echo  ╔══════════════════════════════════════════════════════════════════╗
     echo  ║  [WARNING]  .env.local not found!                               ║
     echo  ║                                                                  ║
-    echo  ║  This file contains:                                             ║
-    echo  ║    • BEDROCK_MODEL_ID                                            ║
-    echo  ║    • AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY                   ║
-    echo  ║    • OPENSEARCH_HOST                                              ║
-    echo  ║    • DATABASE_URL                                                 ║
+    echo  ║  Required frontend config:                                       ║
+    echo  ║    • BACKEND_URL=http://localhost:8000                           ║
     echo  ║                                                                  ║
-    echo  ║  Create nextjs-frontend/.env.local before continuing.            ║
+    echo  ║  Create frontend/.env.local before continuing.                   ║
     echo  ║  See README.md § 3 "Security Protocols" for all required vars.  ║
     echo  ╚══════════════════════════════════════════════════════════════════╝
     echo.
@@ -91,7 +88,7 @@ echo  ║   API Routes: http://localhost:3000/api/*                        ║
 echo  ║                                                                  ║
 echo  ║   Backend (start separately):                                    ║
 echo  ║     cd ..\backend                                                ║
-echo  ║     uvicorn main:app --reload --port 8000                        ║
+echo  ║     uvicorn api_gateway:app --reload --port 8000                 ║
 echo  ║                                                                  ║
 echo  ║   Press Ctrl+C to stop the server                                ║
 echo  ╚══════════════════════════════════════════════════════════════════╝

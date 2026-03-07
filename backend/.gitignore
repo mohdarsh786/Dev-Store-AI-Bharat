@@ -60,3 +60,4 @@ Thumbs.db
 # Ingestion data files
 ingestion/data/
 ingestion/output/
+load_json_to_rds

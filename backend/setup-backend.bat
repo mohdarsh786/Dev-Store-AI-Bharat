@@ -90,9 +90,9 @@ echo Next steps:
 echo   1. Edit .env with your AWS credentials
 echo   2. Test connections: cd tests ^&^& python test_connections_simple.py
 echo   3. Create OpenSearch index: python setup_opensearch_index.py
-echo   4. Start server: uvicorn main:app --reload --port 8000
+echo   4. Start server: uvicorn api_gateway:app --reload --port 8000
 echo.
-echo API docs will be at: http://localhost:8000/docs
+echo API docs will be at: http://localhost:8000/api/docs
 echo.
 
 pause

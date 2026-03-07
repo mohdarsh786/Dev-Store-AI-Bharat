@@ -24,21 +24,27 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def _is_healthy(result) -> bool:
+    """Normalize boolean and dict-based health checks."""
+    if isinstance(result, dict):
+        return result.get("status") == "healthy"
+    return bool(result)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Lifecycle manager for startup and shutdown events"""
     # Startup
     logger.info("Starting DevStore API Gateway...")
+    app.state.start_time = time.time()
     
     # Initialize clients
     app.state.redis = RedisClient()
     await app.state.redis.connect()
     
     app.state.db = DatabaseClient()
-    await app.state.db.connect()
     
     app.state.opensearch = OpenSearchClient()
-    await app.state.opensearch.connect()
     
     app.state.bedrock = BedrockClient()
     
@@ -49,8 +55,8 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down DevStore API Gateway...")
     await app.state.redis.disconnect()
-    await app.state.db.disconnect()
-    await app.state.opensearch.disconnect()
+    app.state.db.close()
+    app.state.opensearch.close()
     logger.info("Shutdown complete")
 
 
@@ -126,9 +132,11 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Include routers with API prefix
-app.include_router(search.router, prefix="/api/v1", tags=["Search"])
-app.include_router(resources.router, prefix="/api/v1", tags=["Resources"])
+# Include routers.
+# `search.router` and `resources.router` already declare `/api/v1`,
+# so adding another prefix here would publish them at `/api/v1/api/v1/...`.
+app.include_router(search.router, tags=["Search"])
+app.include_router(resources.router, tags=["Resources"])
 app.include_router(categories.router, prefix="/api/v1", tags=["Categories"])
 app.include_router(boilerplate.router, prefix="/api/v1", tags=["Boilerplate"])
 app.include_router(users.router, prefix="/api/v1", tags=["Users"])
@@ -150,18 +158,22 @@ async def root():
 async def api_status(request: Request):
     """API status with dependency health checks"""
     redis_status = await request.app.state.redis.ping()
-    db_status = await request.app.state.db.health_check()
-    opensearch_status = await request.app.state.opensearch.health_check()
+    db_status = request.app.state.db.health_check()
+    opensearch_status = request.app.state.opensearch.health_check()
     
-    all_healthy = all([redis_status, db_status, opensearch_status])
+    all_healthy = all([
+        _is_healthy(redis_status),
+        _is_healthy(db_status),
+        _is_healthy(opensearch_status),
+    ])
     
     return {
         "status": "healthy" if all_healthy else "degraded",
         "timestamp": time.time(),
         "dependencies": {
-            "redis": "healthy" if redis_status else "unhealthy",
-            "database": "healthy" if db_status else "unhealthy",
-            "opensearch": "healthy" if opensearch_status else "unhealthy",
+            "redis": "healthy" if _is_healthy(redis_status) else "unhealthy",
+            "database": "healthy" if _is_healthy(db_status) else "unhealthy",
+            "opensearch": "healthy" if _is_healthy(opensearch_status) else "unhealthy",
             "bedrock": "healthy"  # Bedrock is stateless
         }
     }

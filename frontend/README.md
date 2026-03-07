@@ -177,40 +177,11 @@ def lambda_handler(event, context):
 
 ### Mandatory `.env.local` Variables
 
-> **These variables MUST be set in `nextjs-frontend/.env.local` before running the app.**  
-> Never prefix AWS/OpenSearch vars with `NEXT_PUBLIC_` — that would expose them to the browser bundle.
+> **Set these in `frontend/.env.local` before running the app.**
+> The frontend only needs the backend base URL; AWS and database secrets belong in `backend/.env`.
 
 ```bash
-# ── Core Backend Proxy ────────────────────────────────────────────────
-BACKEND_URL=http://localhost:8000            # FastAPI base URL
-
-# ── AWS Identity ─────────────────────────────────────────────────────
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=<your-access-key>         
-AWS_SECRET_ACCESS_KEY=<your-secret-key>
-
-# ── AWS Bedrock (server-side only) ───────────────────────────────────
-BEDROCK_MODEL_ID=anthropic.claude-3-sonnet-20240229-v1:0
-BEDROCK_EMBEDDING_MODEL_ID=amazon.titan-embed-text-v1
-
-# ── OpenSearch ───────────────────────────────────────────────────────
-OPENSEARCH_HOST=<your-domain>.us-east-1.es.amazonaws.com
-OPENSEARCH_PORT=443
-OPENSEARCH_USE_SSL=true
-OPENSEARCH_INDEX_NAME=devstore_resources
-
-# ── S3 Boilerplate ───────────────────────────────────────────────────
-S3_BUCKET_BOILERPLATE=devstore-boilerplate-templates
-S3_BUCKET_CRAWLER_DATA=devstore-crawler-data
-
-# ── Database ─────────────────────────────────────────────────────────
-DATABASE_URL=postgresql://user:password@<rds-host>:5432/devstore
-DB_POOL_SIZE=20
-DB_MAX_OVERFLOW=10
-
-# ── Public vars (NEXT_PUBLIC_ prefix = safe to expose) ───────────────
-NEXT_PUBLIC_APP_NAME=DevStore
-NEXT_PUBLIC_APP_ENV=development
+BACKEND_URL=http://localhost:8000
 ```
 
 ### IAM Minimum Permissions for Bedrock + OpenSearch
@@ -273,22 +244,8 @@ NEXT_PUBLIC_APP_ENV=development
 ### Step 1 — Configure Environment
 
 ```bash
-# Copy this block into nextjs-frontend/.env.local
-# Then fill in your real values
-
+# Create frontend/.env.local
 BACKEND_URL=http://localhost:8000
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-BEDROCK_MODEL_ID=anthropic.claude-3-sonnet-20240229-v1:0
-BEDROCK_EMBEDDING_MODEL_ID=amazon.titan-embed-text-v1
-OPENSEARCH_HOST=localhost
-OPENSEARCH_PORT=9200
-OPENSEARCH_USE_SSL=false
-OPENSEARCH_INDEX_NAME=devstore_resources
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/devstore
-NEXT_PUBLIC_APP_NAME=DevStore
-NEXT_PUBLIC_APP_ENV=development
 ```
 
 ---
@@ -312,7 +269,7 @@ python run_migrations.py
 python update_rankings.py --time-window 7
 
 # Start the FastAPI server
-uvicorn main:app --reload --port 8000
+uvicorn api_gateway:app --reload --port 8000
 ```
 
 > **Verify:** `http://localhost:8000/api/v1/health` should return `{"status":"healthy"}`
@@ -322,7 +279,7 @@ uvicorn main:app --reload --port 8000
 ### Step 3 — Start the Frontend
 
 ```bash
-cd nextjs-frontend
+cd frontend
 
 # Install dependencies (if not already done)
 npm install
@@ -432,7 +389,7 @@ models = await client.fetch_models(limit=100)
 
 ```bash
 # Start backend with auto-reload
-cd backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000
+cd backend && uvicorn api_gateway:app --reload --host 0.0.0.0 --port 8000
 
 # Run tests
 cd backend && pytest --cov=. --cov-report=html
@@ -490,7 +447,7 @@ The Next.js app handles this gracefully and falls back to `MOCK_TOOLS`. To resol
 
 ```bash
 # 1. Start the FastAPI backend
-cd backend && uvicorn main:app --reload --port 8000
+cd backend && uvicorn api_gateway:app --reload --port 8000
 
 # 2. Verify health
 curl http://localhost:8000/api/v1/health
@@ -541,7 +498,7 @@ cd backend && python -c "import fastapi; print(fastapi.__version__)"
 ## Project Structure
 
 ```
-nextjs-frontend/
+frontend/
 ├── app/
 │   ├── layout.tsx              ← SEO metadata, root layout
 │   ├── page.tsx                ← Renders DevStoreDashboard

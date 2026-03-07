@@ -36,12 +36,12 @@ cp .env.example .env
 ### Running Locally
 
 ```bash
-uvicorn main:app --reload --port 8000
+uvicorn api_gateway:app --reload --port 8000
 ```
 
 The API will be available at `http://localhost:8000`
 
-API documentation: `http://localhost:8000/docs`
+API documentation: `http://localhost:8000/api/docs`
 
 ### Running Tests
 
@@ -60,7 +60,7 @@ pytest -m property_test
 
 ```
 backend/
-├── main.py              # FastAPI application entry point
+├── api_gateway.py       # FastAPI EC2 application entry point
 ├── config.py            # Configuration management
 ├── models/              # Pydantic data models
 ├── services/            # Business logic services
@@ -75,21 +75,15 @@ backend/
 
 ## Deployment
 
-### Lambda Deployment
+### EC2 Deployment
 
-1. Package the application:
+Use the centralized gateway and service files:
+
 ```bash
-pip install -r requirements.txt -t package/
-cd package && zip -r ../lambda.zip .
-cd .. && zip -g lambda.zip *.py
+./start_server.sh
 ```
 
-2. Deploy to AWS Lambda:
-```bash
-aws lambda update-function-code \
-  --function-name devstore-api \
-  --zip-file fileb://lambda.zip
-```
+Or configure systemd with `systemd/devstore-api.service`.
 
 ## API Endpoints
 

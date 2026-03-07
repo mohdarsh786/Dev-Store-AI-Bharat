@@ -16,7 +16,7 @@ DevStore is a Google Play Store-inspired marketplace that enables developers to 
 
 ### Backend
 - **Framework**: FastAPI (Python 3.11)
-- **Deployment**: AWS Lambda + API Gateway
+- **Deployment**: EC2 + Gunicorn/Uvicorn (`backend/api_gateway.py`)
 - **Database**: RDS Aurora PostgreSQL
 - **Search**: Amazon OpenSearch Service
 - **AI/ML**: Amazon Bedrock (Claude 3, Titan Embeddings)
@@ -24,10 +24,10 @@ DevStore is a Google Play Store-inspired marketplace that enables developers to 
 - **Authentication**: AWS Cognito
 
 ### Frontend
-- **Framework**: React 18
-- **Build Tool**: Vite
-- **Styling**: Vanilla CSS with CSS Modules (NO Tailwind, NO template libraries)
-- **Routing**: React Router
+- **Framework**: Next.js 16 App Router
+- **Build Tool**: Next.js build pipeline
+- **Styling**: Vanilla CSS with CSS Modules
+- **Routing**: File-based routing with Route Handlers
 - **Visualization**: React Flow
 - **i18n**: react-i18next
 - **Deployment**: S3 + CloudFront
@@ -37,7 +37,7 @@ DevStore is a Google Play Store-inspired marketplace that enables developers to 
 ```
 devstore/
 ├── backend/              # FastAPI backend
-│   ├── main.py          # Application entry point
+│   ├── api_gateway.py   # EC2 application entry point
 │   ├── config.py        # Configuration
 │   ├── models/          # Data models
 │   ├── services/        # Business logic
@@ -76,14 +76,11 @@ pip install -r requirements.txt
 cp .env.example .env
 # Edit .env with your AWS credentials
 
-# Create OpenSearch index
-python setup_opensearch_index.py
-
 # Run server
-uvicorn main:app --reload --port 8000
+uvicorn api_gateway:app --reload --port 8000
 ```
 
-API docs: http://localhost:8000/docs
+API docs: http://localhost:8000/api/docs
 
 ### 2. Frontend Setup
 
@@ -94,7 +91,8 @@ cd frontend
 npm install
 
 # Configure environment
-cp .env.local.example .env.local
+# Create frontend/.env.local with:
+# BACKEND_URL=http://localhost:8000
 
 # Run dev server
 npm run dev
@@ -124,9 +122,9 @@ cd backend/tests
 python test_connections_simple.py  # Quick connection test
 pytest                              # Full test suite
 
-# Frontend tests
+# Frontend checks
 cd frontend
-npm test
+npm run build
 ```
 
 ## Deployment
@@ -145,7 +143,7 @@ See [EC2_DEPLOYMENT_GUIDE.md](EC2_DEPLOYMENT_GUIDE.md) for production deployment
 └─────────────────────────────────────────────────────────────┘
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│          API Gateway + Lambda (FastAPI)                      │
+│          EC2 FastAPI Gateway (Gunicorn/Uvicorn)              │
 └─────────────────────────────────────────────────────────────┘
                               ↓
         ┌──────────────────┬──────────────────┬──────────────┐

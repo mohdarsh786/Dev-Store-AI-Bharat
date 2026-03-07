@@ -5,6 +5,7 @@ Provides PostgreSQL connection pool with retry logic and health checks.
 """
 import time
 import logging
+import re
 from typing import Optional, Any, Dict, List, Tuple
 from contextlib import contextmanager
 import psycopg2
@@ -12,6 +13,8 @@ from psycopg2 import pool, OperationalError, DatabaseError
 from psycopg2.extras import RealDictCursor
 
 logger = logging.getLogger(__name__)
+
+_PG_PARAM_PATTERN = re.compile(r"\$\d+")
 
 
 class DatabaseConnectionError(Exception):
@@ -107,6 +110,11 @@ class DatabaseClient:
         """
         delay = self.base_delay * (2 ** attempt)
         return min(delay, self.max_delay)
+
+    @staticmethod
+    def _normalize_query(query: str) -> str:
+        """Translate asyncpg-style placeholders to psycopg2 format."""
+        return _PG_PARAM_PATTERN.sub("%s", query)
     
     @contextmanager
     def get_connection(self):
@@ -176,6 +184,7 @@ class DatabaseClient:
         Raises:
             DatabaseConnectionError: If query execution fails after retries
         """
+        query = self._normalize_query(query)
         with self.get_connection() as conn:
             try:
                 with conn.cursor(cursor_factory=RealDictCursor) as cursor:
@@ -212,6 +221,7 @@ class DatabaseClient:
         with self.get_connection() as conn:
             try:
                 with conn.cursor() as cursor:
+                    query = self._normalize_query(query)
                     cursor.executemany(query, params_list)
                     conn.commit()
             except DatabaseError as e:
@@ -268,6 +278,32 @@ class DatabaseClient:
             self._pool.closeall()
             logger.info("Database connection pool closed")
             self._pool = None
+
+    async def connect(self) -> None:
+        """Async compatibility shim for callers that expect explicit connect."""
+        return None
+
+    async def disconnect(self) -> None:
+        """Async compatibility shim for callers that expect explicit disconnect."""
+        self.close()
+
+    async def fetch(self, query: str, *params: Any) -> List[Dict[str, Any]]:
+        """Fetch rows as dictionaries using async-compatible call sites."""
+        return self.execute_query(query, params=params, fetch=True) or []
+
+    async def fetchval(self, query: str, *params: Any) -> Any:
+        """Fetch a single scalar value using async-compatible call sites."""
+        rows = self.execute_query(query, params=params, fetch=True) or []
+        if not rows:
+            return None
+        first_row = rows[0]
+        if not first_row:
+            return None
+        return next(iter(first_row.values()))
+
+    async def execute(self, query: str, *params: Any) -> None:
+        """Execute a statement using async-compatible call sites."""
+        self.execute_query(query, params=params, fetch=False)
     
     def __enter__(self):
         """Support for context manager protocol."""
