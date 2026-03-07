@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
 from routers import health, search, resources
+from rag import router as rag_router
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,24 @@ app.add_middleware(
 app.include_router(search.router)
 app.include_router(resources.router)
 app.include_router(health.router)
+app.include_router(rag_router.router)
+
+# Initialize RAG services on startup
+@app.on_event("startup")
+async def startup_event():
+    """Initialize RAG services with Bedrock and OpenSearch clients"""
+    try:
+        from clients.bedrock import BedrockClient
+        from clients.opensearch import OpenSearchClient
+        
+        bedrock_client = BedrockClient()
+        opensearch_client = OpenSearchClient()
+        
+        # Initialize RAG services
+        rag_router.initialize_rag_services(bedrock_client, opensearch_client)
+        logger.info("✅ RAG services initialized")
+    except Exception as e:
+        logger.warning(f"⚠️ RAG services not available: {e}")
 
 
 @app.get("/")
