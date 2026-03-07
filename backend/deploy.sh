@@ -1,5 +1,5 @@
 #!/bin/bash
-# Automated deployment script for DevStore API on EC2
+# Automated deployment script for DevStore API on EC2 (Amazon Linux 2023)
 
 set -e
 
@@ -8,8 +8,8 @@ echo "DevStore API Deployment Script"
 echo "=========================================="
 echo ""
 
-# Configuration
-APP_DIR="/home/ubuntu/devstore/backend"
+# Configuration - Update these paths for Amazon Linux
+APP_DIR="/home/ec2-user/devstore/backend"
 VENV_DIR="$APP_DIR/venv"
 SERVICE_NAME="devstore-api"
 
@@ -33,8 +33,8 @@ log_error() {
 }
 
 # Check if running as correct user
-if [ "$USER" != "ubuntu" ]; then
-    log_warn "This script should be run as ubuntu user"
+if [ "$USER" != "ec2-user" ]; then
+    log_warn "This script should be run as ec2-user"
 fi
 
 # Step 1: Pull latest code
@@ -53,34 +53,41 @@ pip install -r requirements.txt --upgrade || log_error "Failed to install depend
 # Step 4: Check environment variables
 log_info "Checking environment configuration..."
 if [ ! -f "$APP_DIR/.env" ]; then
-    log_error ".env file not found! Copy .env.ec2.example to .env and configure it."
+    log_error ".env file not found! Copy .env.example to .env and configure it."
     exit 1
 fi
 
-# Step 5: Run database migrations
-log_info "Running database migrations..."
-python run_migrations.py || log_warn "Migration failed or no new migrations"
+# Step 5: Run database migrations (if applicable)
+if [ -f "$APP_DIR/run_migrations.py" ]; then
+    log_info "Running database migrations..."
+    python run_migrations.py || log_warn "Migration failed or no new migrations"
+fi
 
 # Step 6: Test application
 log_info "Testing application startup..."
-timeout 10 python -c "from api_gateway import app; print('Application imports successfully')" || log_error "Application test failed"
+timeout 10 python -c "from main import app; print('Application imports successfully')" || log_error "Application test failed"
 
-# Step 7: Restart service
-log_info "Restarting $SERVICE_NAME service..."
-sudo systemctl restart $SERVICE_NAME || log_error "Failed to restart service"
-
-# Step 8: Wait for service to start
-log_info "Waiting for service to start..."
-sleep 5
-
-# Step 9: Check service status
-log_info "Checking service status..."
-if sudo systemctl is-active --quiet $SERVICE_NAME; then
-    log_info "Service is running"
+# Step 7: Restart service (if systemd service exists)
+if systemctl list-units --full -all | grep -q "$SERVICE_NAME"; then
+    log_info "Restarting $SERVICE_NAME service..."
+    sudo systemctl restart $SERVICE_NAME || log_error "Failed to restart service"
+    
+    # Step 8: Wait for service to start
+    log_info "Waiting for service to start..."
+    sleep 5
+    
+    # Step 9: Check service status
+    log_info "Checking service status..."
+    if sudo systemctl is-active --quiet $SERVICE_NAME; then
+        log_info "Service is running"
+    else
+        log_error "Service failed to start"
+        sudo systemctl status $SERVICE_NAME
+        exit 1
+    fi
 else
-    log_error "Service failed to start"
-    sudo systemctl status $SERVICE_NAME
-    exit 1
+    log_warn "Systemd service not found. You may need to start the server manually."
+    log_info "To start manually: uvicorn main:app --host 0.0.0.0 --port 8000"
 fi
 
 # Step 10: Health check
@@ -91,29 +98,16 @@ HEALTH_CHECK=$(curl -s http://localhost:8000/api/v1/health || echo "failed")
 if echo "$HEALTH_CHECK" | grep -q "healthy"; then
     log_info "Health check passed"
 else
-    log_error "Health check failed"
+    log_warn "Health check failed or service not responding"
     echo "$HEALTH_CHECK"
-    exit 1
-fi
-
-# Step 11: Reload Nginx (if needed)
-if [ -f "/etc/nginx/sites-enabled/devstore-api.conf" ]; then
-    log_info "Reloading Nginx..."
-    sudo nginx -t && sudo systemctl reload nginx || log_warn "Nginx reload failed"
 fi
 
 echo ""
 echo "=========================================="
-log_info "Deployment completed successfully!"
+log_info "Deployment completed!"
 echo "=========================================="
-echo ""
-echo "Service Status:"
-sudo systemctl status $SERVICE_NAME --no-pager
-echo ""
-echo "Recent Logs:"
-sudo journalctl -u $SERVICE_NAME -n 20 --no-pager
 echo ""
 echo "API Endpoints:"
 echo "  Health: http://localhost:8000/api/v1/health"
-echo "  Docs:   http://localhost:8000/api/docs"
+echo "  Docs:   http://localhost:8000/docs"
 echo ""
