@@ -1,0 +1,11 @@
+[Unit]
+Description=Run DevStore ingestion every 6 hours
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=6h
+Persistent=true
+Unit=devstore-ingestion.service
+
+[Install]
+WantedBy=timers.target

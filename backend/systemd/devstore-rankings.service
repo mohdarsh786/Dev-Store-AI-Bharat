@@ -1,0 +1,17 @@
+[Unit]
+Description=DevStore ranking refresh job
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/devstore/backend
+EnvironmentFile=/opt/devstore/backend/.env
+ExecStart=/usr/bin/python3 /opt/devstore/backend/update_rankings.py --skip-if-ingestion-active
+StandardOutput=append:/var/log/devstore/rankings.log
+StandardError=append:/var/log/devstore/rankings.log
+User=ubuntu
+Group=ubuntu
+
+[Install]
+WantedBy=multi-user.target

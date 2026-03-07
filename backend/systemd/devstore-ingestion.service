@@ -1,0 +1,17 @@
+[Unit]
+Description=DevStore ingestion orchestrator
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/devstore/backend
+EnvironmentFile=/opt/devstore/backend/.env
+ExecStart=/usr/bin/python3 /opt/devstore/backend/ingestion/run_ingestion.py
+StandardOutput=append:/var/log/devstore/ingestion.log
+StandardError=append:/var/log/devstore/ingestion.log
+User=ubuntu
+Group=ubuntu
+
+[Install]
+WantedBy=multi-user.target
