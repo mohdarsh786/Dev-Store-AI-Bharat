@@ -21,6 +21,14 @@ from .domain import (
     CodeFile,
     BoilerplatePackage,
 )
+from .ingestion import (
+    CanonicalResource,
+    IngestionCounters,
+    IngestionRunRecord,
+    IngestionSource,
+    IngestionStage,
+    IngestionStatus,
+)
 
 __all__ = [
     # Enums
@@ -38,4 +46,10 @@ __all__ = [
     "UserContext",
     "CodeFile",
     "BoilerplatePackage",
+    "CanonicalResource",
+    "IngestionCounters",
+    "IngestionRunRecord",
+    "IngestionSource",
+    "IngestionStage",
+    "IngestionStatus",
 ]

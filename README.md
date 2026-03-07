@@ -57,62 +57,72 @@ devstore/
         └── devstore/    # Project specifications
 ```
 
-## Quick Start
+## 🚀 Quick Start
 
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- AWS Account (configured with IAM user)
+**Your system is ready to run!** All dependencies are installed and 2,240 real resources are available.
 
-### 1. Backend Setup
+### One-Command Start
 
 ```bash
-cd backend
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your AWS credentials
-
-# Run server
-uvicorn api_gateway:app --reload --port 8000
+start_dev.bat
 ```
 
-API docs: http://localhost:8000/api/docs
+This will:
+1. Start backend on http://localhost:8000
+2. Start frontend on http://localhost:3000
+3. Open browser automatically
 
-### 2. Frontend Setup
+**That's it!** 🎉
 
+### Manual Start (Alternative)
+
+**Terminal 1 - Backend:**
+```bash
+cd backend
+.venv\Scripts\activate
+uvicorn main:app --reload --port 8000
+```
+
+**Terminal 2 - Frontend:**
 ```bash
 cd frontend
-
-# Install dependencies
-npm install
-
-# Configure environment
-# Create frontend/.env.local with:
-# BACKEND_URL=http://localhost:8000
-
-# Run dev server
 npm run dev
 ```
 
-App: http://localhost:3000
+Then open: http://localhost:3000
 
-### 3. Test Connections
+### Verify Setup
 
 ```bash
-cd backend/tests
-python test_connections_simple.py
+verify_setup.bat
+```
+
+### First Time Setup
+
+If you haven't set up yet:
+```bash
+quick_setup.bat
 ```
 
 ## Documentation
 
-- [QUICKSTART.md](QUICKSTART.md) - Detailed setup guide
+### Quick Start Guides
+- **[START_HERE.md](START_HERE.md)** - 🚀 Start here! Quick start in 3 steps
+- **[READY_TO_RUN.md](READY_TO_RUN.md)** - ✅ Verification that system is ready
+- **[SETUP_CHECKLIST.md](SETUP_CHECKLIST.md)** - 📋 Complete setup checklist
+- **[GETTING_STARTED.md](GETTING_STARTED.md)** - 🎯 Getting started guide
+
+### Detailed Guides
+- [COMPLETE_SETUP_GUIDE.md](COMPLETE_SETUP_GUIDE.md) - Full setup guide (all phases)
+- [CURRENT_STATUS.md](CURRENT_STATUS.md) - Project status and features
 - [AWS_SETUP_GUIDE.md](AWS_SETUP_GUIDE.md) - AWS configuration
 - [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) - Database structure
 - [EC2_DEPLOYMENT_GUIDE.md](EC2_DEPLOYMENT_GUIDE.md) - Production deployment
+
+### Backend Documentation
+- `backend/ingestion/PRODUCTION_PIPELINE.md` - Ingestion pipeline guide
+- `backend/ingestion/QUICKSTART.md` - Ingestion quick start
+- `backend/README.md` - Backend overview
 
 ## Testing
 

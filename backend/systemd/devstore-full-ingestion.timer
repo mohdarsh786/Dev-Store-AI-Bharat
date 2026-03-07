@@ -1,0 +1,14 @@
+[Unit]
+Description=DevStore Full Ingestion Timer
+Requires=devstore-full-ingestion.service
+
+[Timer]
+# Run every 6 hours
+OnCalendar=*-*-* 00,06,12,18:00:00
+# Run 5 minutes after boot if missed
+OnBootSec=5min
+# Allow up to 1 hour delay if system was off
+Persistent=true
+
+[Install]
+WantedBy=timers.target

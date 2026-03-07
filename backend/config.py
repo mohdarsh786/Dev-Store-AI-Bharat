@@ -41,7 +41,17 @@ class Settings(BaseSettings):
     # S3
     s3_bucket_boilerplate: str
     s3_bucket_crawler_data: str
-    
+
+    # Ingestion
+    ingestion_github_api_token: Optional[str] = None
+    ingestion_sqs_queue_url: Optional[str] = None
+    ingestion_lock_key: str = "ingestion:lock"
+    ingestion_lock_ttl_seconds: int = 7200
+    ingestion_status_ttl_seconds: int = 86400
+    ingestion_schedule_hours: int = 12
+    ranking_schedule_hour_utc: int = 3
+    crawler_snapshot_prefix: str = "snapshots"
+
     # API
     api_rate_limit: int = 100
     api_timeout: int = 30
@@ -68,7 +78,13 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = False
+        extra = "ignore"
 
 
 # Global settings instance
 settings = Settings()
+
+
+def get_database_url() -> str:
+    """Compatibility helper for scripts that expect a function export."""
+    return settings.database_url

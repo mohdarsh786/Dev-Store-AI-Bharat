@@ -1,0 +1,20 @@
+[Unit]
+Description=DevStore Full Ingestion Service
+After=network.target postgresql.service redis.service
+
+[Service]
+Type=oneshot
+User=devstore
+WorkingDirectory=/opt/devstore/backend
+Environment="PATH=/opt/devstore/backend/.venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=/opt/devstore/backend"
+ExecStart=/opt/devstore/backend/.venv/bin/python scripts/run_full_backfill.py
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=devstore-ingestion
+
+# Timeout after 2 hours
+TimeoutStartSec=7200
+
+[Install]
+WantedBy=multi-user.target

@@ -8,6 +8,7 @@ from typing import Optional, Any, List
 import json
 import logging
 from datetime import timedelta
+import uuid
 
 from config import settings
 
@@ -129,6 +130,14 @@ class RedisClient:
         except Exception as e:
             logger.error(f"Redis EXISTS failed for key {key}: {str(e)}")
             return False
+
+    async def incrby(self, key: str, amount: int = 1) -> int:
+        """Increment a numeric key by the requested amount."""
+        try:
+            return await self.client.incrby(key, amount)
+        except Exception as e:
+            logger.error(f"Redis INCRBY failed for key {key}: {str(e)}")
+            return 0
     
     async def expire(self, key: str, ttl: int) -> bool:
         """Set TTL on existing key"""
@@ -301,6 +310,32 @@ class RedisClient:
         except Exception as e:
             logger.error(f"Failed to invalidate pattern {pattern}: {str(e)}")
             return 0
+
+    async def acquire_lock(self, key: str, ttl: int) -> Optional[str]:
+        """Acquire a distributed lock using SET NX EX semantics."""
+        token = str(uuid.uuid4())
+        try:
+            acquired = await self.client.set(key, token, ex=ttl, nx=True)
+            return token if acquired else None
+        except Exception as e:
+            logger.error(f"Failed to acquire lock {key}: {str(e)}")
+            return None
+
+    async def release_lock(self, key: str, token: str) -> bool:
+        """Release a lock only if the stored token matches."""
+        script = """
+        if redis.call('get', KEYS[1]) == ARGV[1] then
+            return redis.call('del', KEYS[1])
+        else
+            return 0
+        end
+        """
+        try:
+            result = await self.client.eval(script, 1, key, token)
+            return bool(result)
+        except Exception as e:
+            logger.error(f"Failed to release lock {key}: {str(e)}")
+            return False
     
     async def flush_all(self) -> bool:
         """Flush all cache (use with caution!)"""

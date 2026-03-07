@@ -4,10 +4,7 @@ DevStore Backend - Main FastAPI Application
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
-from routers import search, resources
-from rag.router import router as rag_router, initialize_rag_services
-from clients.bedrock import BedrockClient
-from clients.opensearch import OpenSearchClient
+from routers import health, search, resources
 import logging
 
 logger = logging.getLogger(__name__)
@@ -30,20 +27,7 @@ app.add_middleware(
 # Include routers
 app.include_router(search.router)
 app.include_router(resources.router)
-app.include_router(rag_router)
-
-# Initialize RAG services on startup
-@app.on_event("startup")
-async def startup_event():
-    """Initialize RAG services"""
-    try:
-        bedrock_client = BedrockClient()
-        opensearch_client = OpenSearchClient()
-        
-        initialize_rag_services(bedrock_client, opensearch_client)
-        logger.info("✅ RAG services initialized on startup")
-    except Exception as e:
-        logger.error(f"⚠️ Failed to initialize RAG services: {e}")
+app.include_router(health.router)
 
 
 @app.get("/")

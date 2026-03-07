@@ -182,3 +182,108 @@ class RankingService:
         
         logger.debug(f"Final score: {final_score}")
         return max(0.0, min(1.0, final_score))
+
+    def compute_trending_score(
+        self,
+        recent_downloads: int,
+        recent_views: int,
+        recent_bookmarks: int,
+        time_window_days: int = 7,
+        growth_rate: float = 0.0
+    ) -> float:
+        """
+        Compute a trending score from recent activity.
+
+        Downloads are weighted highest because they correlate best with direct intent,
+        followed by views, bookmarks, and a growth bonus/penalty.
+        """
+        window = max(time_window_days, 1)
+        downloads_score = min(recent_downloads / 500.0, 1.0)
+        views_score = min(recent_views / 5000.0, 1.0)
+        bookmarks_score = min(recent_bookmarks / 250.0, 1.0)
+        growth_score = max(0.0, min((growth_rate + 100.0) / 300.0, 1.0))
+
+        score = (
+            downloads_score * 0.4 +
+            views_score * 0.3 +
+            bookmarks_score * 0.2 +
+            growth_score * 0.1
+        )
+        return max(0.0, min(1.0, score))
+
+    def compute_category_rankings(
+        self,
+        resources: List[Dict[str, Any]],
+        score_field: str = "final_score"
+    ) -> List[Dict[str, Any]]:
+        """Assign per-type ranks for a list of resource dictionaries."""
+        if not resources:
+            return []
+
+        ranked_resources = [dict(resource) for resource in resources]
+        grouped: Dict[str, List[Dict[str, Any]]] = {}
+        for resource in ranked_resources:
+            resource_type = str(resource.get("type", "unknown"))
+            grouped.setdefault(resource_type, []).append(resource)
+
+        for group in grouped.values():
+            group.sort(key=lambda item: item.get(score_field, 0.0), reverse=True)
+            for index, item in enumerate(group, start=1):
+                item["category_rank"] = index
+
+        return ranked_resources
+
+    def refresh_rankings(self, resources: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """Compute rank, trending score, and category rank for persisted resources."""
+        ranked: List[Dict[str, Any]] = []
+        now = datetime.utcnow()
+
+        for resource in resources:
+            metadata = resource.get("metadata") or {}
+            last_updated = resource.get("source_updated_at") or resource.get("updated_at") or now
+
+            api_metadata = metadata.get("api", {})
+            pricing = metadata.get("model", {}).get("pricing", {})
+
+            popularity = self.compute_popularity(
+                github_stars=resource.get("github_stars", 0) or 0,
+                downloads=resource.get("download_count", 0) or 0,
+                users=resource.get("active_users", 0) or 0,
+            )
+            optimization = self.compute_optimization(
+                latency_ms=api_metadata.get("latency_ms", 0) or 0,
+                cost_per_request=float(pricing.get("prompt", 0) or 0),
+                doc_quality=1.0 if resource.get("documentation_url") else 0.6,
+            )
+            freshness = self.compute_freshness(
+                last_updated=last_updated,
+                health_status=resource.get("health_status", "healthy"),
+            )
+            final_score = self.compute_score(
+                semantic_relevance=0.5,
+                popularity=popularity,
+                optimization=optimization,
+                freshness=freshness,
+            )
+            trending_score = self.compute_trending_score(
+                recent_downloads=resource.get("download_count", 0) or 0,
+                recent_views=(resource.get("github_stars", 0) or 0) + (resource.get("active_users", 0) or 0),
+                recent_bookmarks=max((resource.get("github_stars", 0) or 0) // 10, 0),
+                growth_rate=max(0.0, freshness * 100.0 - 20.0),
+            )
+
+            ranked.append({
+                **dict(resource),
+                "popularity_score": popularity,
+                "optimization_score": optimization,
+                "freshness_score": freshness,
+                "final_score": final_score,
+                "trending_score": trending_score,
+            })
+
+        ranked.sort(key=lambda item: item["final_score"], reverse=True)
+        for index, item in enumerate(ranked, start=1):
+            item["rank_score"] = item["final_score"]
+            item["rank_position"] = index
+
+        return self.compute_category_rankings(ranked)
