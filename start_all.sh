@@ -1,83 +1,73 @@
 #!/bin/bash
 
-# DevStore Main Start Script
-# This will start BOTH the FastAPI backend and the Vite frontend simultaneously.
+# Dev-Store Main Start Script
 
-echo "========================================="
-echo "🚀 Starting DevStore Services"
-echo "========================================="
+echo "================================================"
+echo " 🚀 Starting Dev-Store Application"
+echo "================================================"
+echo ""
+
+# Check if backend is set up
+if [ ! -d "backend/venv" ]; then
+    echo "[WARNING] Backend not set up. Running setup..."
+    cd backend
+    chmod +x setup-backend.sh
+    ./setup-backend.sh
+    cd ..
+    echo ""
+fi
+
+# Check if frontend is set up
+if [ ! -d "frontend/node_modules" ]; then
+    echo "[WARNING] Frontend not set up. Running setup..."
+    cd frontend
+    chmod +x setup-frontend.sh
+    ./setup-frontend.sh
+    cd ..
+    echo ""
+fi
 
 # Function to handle cleanup on exit
 cleanup() {
     echo ""
-    echo "🛑 Shutting down DEVStore services..."
-    kill $BACKEND_PID
-    kill $FRONTEND_PID
+    echo "🛑 Shutting down Dev-Store services..."
+    kill $BACKEND_PID 2>/dev/null
+    kill $FRONTEND_PID 2>/dev/null
     exit
 }
 
 # Trap SIGINT (Ctrl+C) and call cleanup
 trap cleanup SIGINT SIGTERM
 
-echo ""
-echo "📦 Setting up Backend (FastAPI)..."
-cd backend
-
-# Create virtual environment if it doesn't exist
-if [ ! -d "venv" ]; then
-    echo "   Creating Python virtual environment..."
-    python3 -m venv venv
-fi
-
-# Activate virtual environment
-source venv/bin/activate
-
-# Install dependencies (quietly)
-echo "   Installing Python dependencies..."
-pip install -r requirements.txt -q
-
-# Set up environment variables if they don't exist
-if [ ! -f ".env" ] && [ -f ".env.example" ]; then
-    echo "   Copying .env.example to .env..."
-    cp .env.example .env
-fi
-
 # Start backend server
-echo "🟢 Starting FastAPI server on port 8000..."
+echo "🟢 Starting Backend (FastAPI) on port 8000..."
+cd backend
+source venv/bin/activate
 uvicorn main:app --reload --port 8000 &
 BACKEND_PID=$!
 cd ..
 
-echo ""
-echo "📦 Setting up Frontend (React/Vite)..."
-cd frontend
-
-# Install Node dependencies if needed
-if [ ! -d "node_modules" ]; then
-    echo "   Installing Node dependencies..."
-    npm install --silent
-fi
-
-# Set up frontend environment variables if they don't exist
-if [ ! -f ".env" ] && [ -f ".env.example" ]; then
-    echo "   Copying .env.example to .env..."
-    cp .env.example .env
-fi
+# Wait a moment for backend to start
+sleep 2
 
 # Start frontend server
-echo "🟢 Starting React server on port 3000..."
-npm run dev -- --port 3000 &
+echo "🟢 Starting Frontend (Next.js) on port 3000..."
+cd frontend
+npm run dev &
 FRONTEND_PID=$!
 cd ..
 
 echo ""
-echo "========================================="
-echo "✨ All services started!"
-echo "========================================="
-echo "📱 Frontend Dashboard : http://localhost:3000"
-echo "🔧 Backend API Docs   : http://localhost:8000/docs"
-echo "👉 Press Ctrl+C to stop both servers gracefully."
-echo "========================================="
+echo "================================================"
+echo " ✨ Dev-Store is Running!"
+echo "================================================"
+echo " 📱 Frontend:  http://localhost:3000"
+echo " 🔧 Backend:   http://localhost:8000"
+echo " 📚 API Docs:  http://localhost:8000/docs"
+echo ""
+echo " Press Ctrl+C to stop all servers"
+echo "================================================"
+echo ""
 
 # Wait for background processes
 wait $BACKEND_PID

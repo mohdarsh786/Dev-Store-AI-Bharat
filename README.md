@@ -57,38 +57,35 @@ devstore/
         └── devstore/    # Project specifications
 ```
 
-## Getting Started
+## Quick Start
 
 ### Prerequisites
-
 - Python 3.11+
 - Node.js 18+
-- PostgreSQL
-- AWS Account
+- AWS Account (configured with IAM user)
 
-### Backend Setup
+### 1. Backend Setup
 
 ```bash
 cd backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
 
 # Configure environment
 cp .env.example .env
-# Edit .env with your AWS credentials and database URL
+# Edit .env with your AWS credentials
 
-# Run development server
+# Create OpenSearch index
+python setup_opensearch_index.py
+
+# Run server
 uvicorn main:app --reload --port 8000
 ```
 
-API documentation: http://localhost:8000/docs
+API docs: http://localhost:8000/docs
 
-### Frontend Setup
+### 2. Frontend Setup
 
 ```bash
 cd frontend
@@ -97,78 +94,44 @@ cd frontend
 npm install
 
 # Configure environment
-cp .env.example .env
-# Edit .env with your API URL
+cp .env.local.example .env.local
 
-# Run development server
+# Run dev server
 npm run dev
 ```
 
 App: http://localhost:3000
 
-## Testing
-
-### Backend Tests
+### 3. Test Connections
 
 ```bash
-cd backend
-
-# Run all tests
-pytest
-
-# Run with coverage
-pytest --cov=. --cov-report=html
-
-# Run property-based tests
-pytest -m property_test
+cd backend/tests
+python test_connections_simple.py
 ```
 
-### Frontend Tests
+## Documentation
+
+- [QUICKSTART.md](QUICKSTART.md) - Detailed setup guide
+- [AWS_SETUP_GUIDE.md](AWS_SETUP_GUIDE.md) - AWS configuration
+- [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) - Database structure
+- [EC2_DEPLOYMENT_GUIDE.md](EC2_DEPLOYMENT_GUIDE.md) - Production deployment
+
+## Testing
 
 ```bash
+# Backend tests
+cd backend/tests
+python test_connections_simple.py  # Quick connection test
+pytest                              # Full test suite
+
+# Frontend tests
 cd frontend
-
-# Run tests
 npm test
-
-# Run with UI
-npm run test:ui
 ```
 
 ## Deployment
 
-### Backend (AWS Lambda)
-
-```bash
-cd backend
-
-# Package Lambda function
-pip install -r requirements.txt -t package/
-cd package && zip -r ../lambda.zip .
-cd .. && zip -g lambda.zip *.py
-
-# Deploy
-aws lambda update-function-code \
-  --function-name devstore-api \
-  --zip-file fileb://lambda.zip
-```
-
-### Frontend (S3 + CloudFront)
-
-```bash
-cd frontend
-
-# Build
-npm run build
-
-# Deploy to S3
-aws s3 sync dist/ s3://devstore-frontend-prod/
-
-# Invalidate CloudFront cache
-aws cloudfront create-invalidation \
-  --distribution-id YOUR_DIST_ID \
-  --paths "/*"
-```
+See [EC2_DEPLOYMENT_GUIDE.md](EC2_DEPLOYMENT_GUIDE.md) for production deployment instructions.
 
 ## Architecture
 

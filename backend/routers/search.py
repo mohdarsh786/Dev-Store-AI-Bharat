@@ -4,17 +4,21 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 import logging
-import os
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1", tags=["search"])
 
-# Check if AWS services are configured
-AWS_CONFIGURED = all([
-    os.getenv('AWS_REGION'),
-    os.getenv('OPENSEARCH_HOST'),
-    os.getenv('DATABASE_URL')
-])
+# Check if AWS services are configured using settings
+try:
+    from config import settings
+    AWS_CONFIGURED = all([
+        settings.aws_region,
+        settings.opensearch_host,
+        settings.database_url
+    ])
+except Exception as e:
+    logger.error(f"Failed to load settings: {e}")
+    AWS_CONFIGURED = False
 
 # Try to import search service if AWS is configured
 search_service = None

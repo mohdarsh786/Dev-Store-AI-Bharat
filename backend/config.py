@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     
     # AWS
     aws_region: str = "us-east-1"
+    aws_account_id: Optional[str] = None
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     
@@ -35,6 +36,7 @@ class Settings(BaseSettings):
     # Bedrock
     bedrock_model_id: str = "anthropic.claude-3-sonnet-20240229-v1:0"
     bedrock_embedding_model_id: str = "amazon.titan-embed-text-v1"
+    bedrock_claude_arn: Optional[str] = None
     
     # S3
     s3_bucket_boilerplate: str
@@ -44,6 +46,15 @@ class Settings(BaseSettings):
     api_rate_limit: int = 100
     api_timeout: int = 30
     cors_origins: list = ["*"]
+    
+    # Ingestion
+    ingestion_github_api_token: Optional[str] = None
+    ingestion_sqs_queue_url: Optional[str] = None
+    
+    # Security
+    secret_key: Optional[str] = None
+    jwt_algorithm: str = "HS256"
+    jwt_expiration_minutes: int = 60
     
     # Environment
     environment: str = "development"

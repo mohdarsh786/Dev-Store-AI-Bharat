@@ -4,6 +4,8 @@
    All tokens use --ds-* prefix.
    ══════════════════════════════════════════════════════════════════════════════ */
 
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
 /* ─── Design Tokens: Dark Mode (Default) ──────────────────────────────────── */
 :root {
   --ds-primary: #3B82F6;

@@ -825,17 +825,16 @@ function AIChatPanel({ onClose, isDark = true, isMobile = false }) {
     setMessages(prev => [...prev, { type: "user", content: q }]);
     setThinking(true);
     try {
-      const resp = await apiService.search(q, { limit: 3 });
-      const results = resp.results || [];
-      let aiContent = results.length
-        ? `Found ${results.length} matching resource(s) via OpenSearch + Bedrock semantic search:`
-        : "No exact matches found. Try different keywords or browse by category.";
+      // Use RAG chat endpoint instead of regular search
+      const resp = await apiService.ragChat(q, "default", {});
+      
+      // Display the AI answer
       setMessages(prev => [
         ...prev,
         {
           type: "ai",
-          content: aiContent,
-          results: results.map((r, idx) => mapResource(r, idx)),
+          content: resp.answer,
+          results: resp.sources?.map((r, idx) => mapResource(r, idx)) || [],
         },
       ]);
     } catch {
@@ -1155,7 +1154,9 @@ export default function DevStoreDashboard() {
           </aside>
         )}
 
-        <main className="ds-main">
+        {/* Main content + Intent Discovery wrapper */}
+        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          <main className="ds-main" style={{ flex: 1, minWidth: 0 }}>
           <header style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: isMobile ? 10 : 16, padding: `14px ${pad}px`, flexWrap: isMobile ? "wrap" : "nowrap", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(59,130,246,0.1)"}`, background: dk ? "rgba(8,12,24,0.8)" : "rgba(240,244,255,0.8)", backdropFilter: "blur(12px)" }}>
             {isMobile && (
               <Tooltip text="Open menu" position="bottom">
@@ -1326,7 +1327,7 @@ export default function DevStoreDashboard() {
         {/* Intent Discovery Sidebar widget (Desktop) */}
         {!isMobile && showChat && (
           <aside style={{
-            width: 400, flexShrink: 0,
+            width: 420, flexShrink: 0,
             borderLeft: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
             background: dk ? "rgba(2, 6, 23, 0.7)" : "rgba(255,255,255,0.7)",
             backdropFilter: "blur(24px)", zIndex: 60,
@@ -1335,6 +1336,7 @@ export default function DevStoreDashboard() {
             <AIChatPanel onClose={() => setShowChat(false)} isDark={dk} isMobile={isMobile} />
           </aside>
         )}
+        </div>
 
         {/* Resource Detail Workbench Modal */}
         {selectedTool && (

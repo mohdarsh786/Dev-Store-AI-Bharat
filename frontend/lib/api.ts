@@ -80,6 +80,18 @@ class ApiService {
     async healthCheck() {
         return this.request<{ status: string }>("/api/health");
     }
+
+    /** RAG-powered chat with conversational memory (POST /api/rag/chat) */
+    async ragChat(query: string, sessionId: string = "default", filters: Record<string, unknown> = {}) {
+        return this.request<RagChatResponse>("/api/rag/chat", {
+            method: "POST",
+            body: JSON.stringify({
+                query,
+                session_id: sessionId,
+                filters,
+            }),
+        });
+    }
 }
 
 export interface Resource {
@@ -114,6 +126,15 @@ export interface TrendingFilters {
     limit?: number;
     pricing_type?: string;
     sort?: string;
+}
+
+export interface RagChatResponse {
+    answer: string;
+    sources: Resource[];
+    confidence: number;
+    in_scope: boolean;
+    session_id: string;
+    timestamp: string;
 }
 
 const apiService = new ApiService();

@@ -40,49 +40,32 @@ class SearchService:
         return embedding
     
     def extract_intent(self, query: str) -> Dict[str, Any]:
-        """Extract search intent using Bedrock or fallback"""
-        try:
-            prompt = f"""Analyze this search query and extract the intent:
-Query: "{query}"
-
-Return a JSON object with:
-- resource_types: list of types (API, Model, Dataset)
-- pricing_preference: free, paid, or both
-- key_terms: list of important keywords
-
-Example:
-{{"resource_types": ["API"], "pricing_preference": "both", "key_terms": ["language model", "text generation"]}}
-
-JSON:"""
-            
-            response = self.bedrock.generate_text(prompt, max_tokens=200, temperature=0.3)
-            intent = json.loads(response.strip())
-            logger.info(f"Extracted intent: {intent}")
-            return intent
-        except Exception as e:
-            logger.warning(f"Intent extraction failed: {e}, using default")
-            # Return default intent based on query keywords
-            query_lower = query.lower()
-            
-            resource_types = ["API", "Model", "Dataset"]
-            if "api" in query_lower:
-                resource_types = ["API"]
-            elif "model" in query_lower:
-                resource_types = ["Model"]
-            elif "dataset" in query_lower:
-                resource_types = ["Dataset"]
-            
-            pricing = "both"
-            if "free" in query_lower:
-                pricing = "free"
-            elif "paid" in query_lower:
-                pricing = "paid"
-            
-            return {
-                "resource_types": resource_types,
-                "pricing_preference": pricing,
-                "key_terms": query.split()
-            }
+        """Extract search intent using fallback logic (Claude not available in this region)"""
+        # Return default intent based on query keywords
+        query_lower = query.lower()
+        
+        resource_types = ["API", "Model", "Dataset"]
+        if "api" in query_lower:
+            resource_types = ["API"]
+        elif "model" in query_lower:
+            resource_types = ["Model"]
+        elif "dataset" in query_lower:
+            resource_types = ["Dataset"]
+        
+        pricing = "both"
+        if "free" in query_lower:
+            pricing = "free"
+        elif "paid" in query_lower:
+            pricing = "paid"
+        
+        intent = {
+            "resource_types": resource_types,
+            "pricing_preference": pricing,
+            "key_terms": query.split()
+        }
+        
+        logger.info(f"Extracted intent (keyword-based): {intent}")
+        return intent
     
     def vector_search(
         self,

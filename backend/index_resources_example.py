@@ -189,11 +189,11 @@ def index_mock_resources():
                 'embedding': embedding
             }
             
-            # Index document
+            # Index document (refresh ignored for OpenSearch Serverless)
             opensearch_client.index_document(
                 document=document,
                 doc_id=resource['id'],
-                refresh=True
+                refresh=False
             )
             
             logger.info(f"Indexed: {resource['name']}")

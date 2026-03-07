@@ -117,10 +117,23 @@ class BedrockClient:
     def _initialize_client(self) -> None:
         """Initialize the Bedrock client."""
         try:
-            self._client = boto3.client(
-                service_name='bedrock-runtime',
-                region_name=self.region_name
-            )
+            # Get credentials from settings if available
+            from config import settings
+            
+            # Configure boto3 session with credentials
+            import boto3
+            session_kwargs = {'region_name': self.region_name}
+            
+            if settings.aws_access_key_id and settings.aws_secret_access_key:
+                session_kwargs['aws_access_key_id'] = settings.aws_access_key_id
+                session_kwargs['aws_secret_access_key'] = settings.aws_secret_access_key
+                logger.info("Using AWS credentials from settings")
+            else:
+                logger.info("Using default AWS credentials (IAM role or environment)")
+            
+            session = boto3.Session(**session_kwargs)
+            self._client = session.client('bedrock-runtime')
+            
             logger.info(f"Bedrock client initialized (region={self.region_name})")
         except (ClientError, BotoCoreError) as e:
             logger.error(f"Failed to initialize Bedrock client: {e}")
@@ -232,6 +245,138 @@ class BedrockClient:
                     time.sleep(delay)
         
         return self._circuit_breaker.call(_invoke)
+    
+    def invoke_claude(
+        self,
+        messages: List[Dict[str, str]],
+        max_tokens: int = 500,
+        temperature: float = 0.7,
+        system: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Invoke Claude with messages (for RAG chat).
+        Falls back to Titan Text if Claude is not available.
+        
+        Args:
+            messages: List of message dicts with 'role' and 'content'
+            max_tokens: Maximum tokens to generate
+            temperature: Sampling temperature
+            system: Optional system prompt
+            
+        Returns:
+            Response dict from Claude or Titan
+        """
+        def _invoke():
+            # Try Claude first
+            try:
+                return self._invoke_claude_internal(messages, max_tokens, temperature, system)
+            except Exception as e:
+                logger.warning(f"Claude not available, falling back to Titan Text: {e}")
+                # Fallback to Titan Text
+                return self._invoke_titan_text(messages, max_tokens, temperature, system)
+        
+        return self._circuit_breaker.call(_invoke)
+    
+    def _invoke_claude_internal(
+        self,
+        messages: List[Dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+        system: Optional[str]
+    ) -> Dict[str, Any]:
+        """Internal method to invoke Claude."""
+        # Filter out system messages and use as system prompt
+        filtered_messages = []
+        system_prompt = system
+        
+        for msg in messages:
+            if msg['role'] == 'system':
+                system_prompt = msg['content']
+            else:
+                filtered_messages.append(msg)
+        
+        body = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": max_tokens,
+            "messages": filtered_messages,
+            "temperature": temperature
+        }
+        
+        if system_prompt:
+            body["system"] = system_prompt
+        
+        response = self._client.invoke_model(
+            modelId=self.model_id,
+            body=json.dumps(body)
+        )
+        
+        response_body = json.loads(response['body'].read())
+        logger.debug(f"Claude invoked successfully")
+        return response_body
+    
+    def _invoke_titan_text(
+        self,
+        messages: List[Dict[str, str]],
+        max_tokens: int,
+        temperature: float,
+        system: Optional[str]
+    ) -> Dict[str, Any]:
+        """Fallback method to invoke Amazon Titan Text."""
+        # Combine messages into a single prompt for Titan
+        prompt_parts = []
+        
+        for msg in messages:
+            if msg['role'] == 'system':
+                prompt_parts.append(f"System: {msg['content']}\n")
+            elif msg['role'] == 'user':
+                prompt_parts.append(f"User: {msg['content']}\n")
+            elif msg['role'] == 'assistant':
+                prompt_parts.append(f"Assistant: {msg['content']}\n")
+        
+        prompt_parts.append("Assistant:")
+        prompt = "\n".join(prompt_parts)
+        
+        body = {
+            "inputText": prompt,
+            "textGenerationConfig": {
+                "maxTokenCount": max_tokens,
+                "temperature": temperature,
+                "topP": 0.9,
+                "stopSequences": []
+            }
+        }
+        
+        # Try Titan Text Lite first (available in ap-northeast-3)
+        titan_models = [
+            "amazon.titan-text-lite-v1",
+            "amazon.titan-text-express-v1"
+        ]
+        
+        last_error = None
+        for model_id in titan_models:
+            try:
+                response = self._client.invoke_model(
+                    modelId=model_id,
+                    body=json.dumps(body)
+                )
+                
+                response_body = json.loads(response['body'].read())
+                
+                # Format response to match Claude's structure
+                text = response_body['results'][0]['outputText'].strip()
+                logger.info(f"Titan Text ({model_id}) invoked successfully")
+                
+                return {
+                    "content": [{"text": text}],
+                    "model": model_id
+                }
+            except Exception as e:
+                logger.warning(f"Failed to invoke {model_id}: {e}")
+                last_error = e
+                continue
+        
+        # If all models failed, raise the last error
+        raise BedrockClientError(f"All Titan Text models failed: {last_error}")
     
     def health_check(self) -> Dict[str, Any]:
         """
