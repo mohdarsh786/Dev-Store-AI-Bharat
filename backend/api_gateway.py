@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 import time
 import logging
 
-from routers import search, resources, categories, boilerplate, users, health
+from routers import auth, search, resources, categories, boilerplate, users, health
 from clients.redis_client import RedisClient
 from clients.database import DatabaseClient
 from clients.opensearch import OpenSearchClient
@@ -137,6 +137,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 # so adding another prefix here would publish them at `/api/v1/api/v1/...`.
 app.include_router(search.router, tags=["Search"])
 app.include_router(resources.router, tags=["Resources"])
+app.include_router(auth.router, tags=["Auth"])
 app.include_router(categories.router, prefix="/api/v1", tags=["Categories"])
 app.include_router(boilerplate.router, prefix="/api/v1", tags=["Boilerplate"])
 app.include_router(users.router, prefix="/api/v1", tags=["Users"])

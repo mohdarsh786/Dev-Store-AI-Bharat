@@ -24,7 +24,7 @@ class ApiService {
         return response.json();
     }
 
-    /** Search resources by query string (GET /api/resources/search) */
+    /** Search resources by query string via the resources route handler. */
     async search(query: string, filters: Record<string, unknown> = {}) {
         const params = new URLSearchParams();
         params.append("q", query);
@@ -48,19 +48,21 @@ class ApiService {
         });
     }
 
-    /** Get all resources with filters (GET /api/resources) */
+    /** Get resources via the search/trending handlers the backend actually exposes. */
     async getResources(filters: ResourceFilters = {}) {
-        const params = new URLSearchParams();
-        if (filters.resource_type) params.append("resource_type", filters.resource_type);
-        if (filters.pricing_type) params.append("pricing_type", filters.pricing_type);
-        if (filters.limit) params.append("limit", String(filters.limit));
-        if (filters.offset) params.append("offset", String(filters.offset));
-        return this.request<Resource[]>(`/api/resources?${params}`);
-    }
+        if (filters.query && String(filters.query).trim()) {
+            const response = await this.search(String(filters.query), {
+                resource_types: filters.resource_type ? [filters.resource_type] : undefined,
+                limit: filters.limit,
+            });
+            return response.results;
+        }
 
-    /** Get single resource (GET /api/resources/[id]) */
-    async getResource(id: string) {
-        return this.request<Resource>(`/api/resources/${id}`);
+        const response = await this.getTrending({
+            resource_type: filters.resource_type,
+            limit: filters.limit,
+        });
+        return response.results;
     }
 
     /** Get trending resources sorted by Unified Ranking Algorithm (GET /api/trending) */
@@ -114,6 +116,7 @@ export interface Resource {
 }
 
 export interface ResourceFilters {
+    query?: string;
     resource_type?: string | null;
     pricing_type?: string;
     limit?: number;

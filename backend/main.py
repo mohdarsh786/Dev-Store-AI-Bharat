@@ -4,7 +4,7 @@ DevStore Backend - Main FastAPI Application
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from mangum import Mangum
-from routers import health, search, resources
+from routers import auth, health, search, resources
 from rag.router import router as rag_router
 import logging
 
@@ -28,6 +28,7 @@ app.add_middleware(
 # Include routers
 app.include_router(search.router)
 app.include_router(resources.router)
+app.include_router(auth.router)
 app.include_router(health.router)
 app.include_router(rag_router)
 

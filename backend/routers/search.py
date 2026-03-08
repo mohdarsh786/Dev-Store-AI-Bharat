@@ -200,6 +200,12 @@ async def search(request: SearchRequest) -> SearchResponse:
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 
+@router.post("/search/intent")
+async def intent_search(request: SearchRequest) -> SearchResponse:
+    """Backward-compatible alias for intent search clients/tests."""
+    return await search(request)
+
+
 @router.get("/trending")
 async def trending(resource_type: Optional[str] = None, limit: int = 40) -> SearchResponse:
     try:
