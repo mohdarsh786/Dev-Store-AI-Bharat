@@ -509,20 +509,155 @@ function SkeletonCard({ index, isDark = true }) {
 function ResourceWorkbench({ tool, onClose, isDark }) {
   const dk = isDark;
   const [pulse, setPulse] = useState(false);
-  const isModel = tool.category === "Model";
+  const [prompt, setPrompt] = useState("");
+  const [executing, setExecuting] = useState(false);
+  const [output, setOutput] = useState([
+    { type: "system", text: `Initializing ${tool.category.toLowerCase()} ${tool.name}...` },
+    { type: "info", text: "Ready for input. Prompt context active." }
+  ]);
 
-  // Simplified Blueprint View
+  // Type-specific metadata configuration
+  const getMetadataConfig = () => {
+    const metadata = tool.metadata || {};
+    
+    if (tool.category === "Model") {
+      return {
+        insights: [
+          { 
+            label: "Precision", 
+            value: metadata.precision || metadata.pipeline_tag || "FP16 / BF16",
+            icon: Icons.Cpu
+          },
+          { 
+            label: "Context Window", 
+            value: metadata.context_length || metadata.max_length || "128k Tokens",
+            icon: Icons.Layers
+          },
+          { 
+            label: "Parameters", 
+            value: metadata.parameters || `${tool.downloads > 1000000 ? '41.6M' : '7B'}`,
+            icon: Icons.Brain
+          }
+        ],
+        flowConfig: {
+          input: { emoji: "🗄️", label: "Dataset", color: "rgba(245, 158, 11, 0.15)" },
+          output: { emoji: "🔌", label: "App/API", color: "rgba(59, 130, 246, 0.15)" }
+        }
+      };
+    } else if (tool.category === "API") {
+      return {
+        insights: [
+          { 
+            label: "Latency", 
+            value: `${tool.latency}ms (p99)`,
+            icon: Icons.Activity
+          },
+          { 
+            label: "Rate Limit", 
+            value: metadata.rate_limit || "1000 req/min",
+            icon: Icons.Zap
+          },
+          { 
+            label: "Auth Type", 
+            value: metadata.auth_type || "Bearer Token",
+            icon: Icons.Settings
+          }
+        ],
+        flowConfig: {
+          input: { emoji: "📱", label: "Client", color: "rgba(168, 85, 247, 0.15)" },
+          output: { emoji: "💾", label: "Database", color: "rgba(34, 197, 94, 0.15)" }
+        }
+      };
+    } else if (tool.category === "Dataset") {
+      return {
+        insights: [
+          { 
+            label: "Size", 
+            value: metadata.size || `${(tool.downloads / 1000000).toFixed(1)}GB`,
+            icon: Icons.Database
+          },
+          { 
+            label: "Format", 
+            value: metadata.format || metadata.modality || "Parquet/CSV",
+            icon: Icons.Package
+          },
+          { 
+            label: "License", 
+            value: metadata.license || "MIT",
+            icon: Icons.Check
+          }
+        ],
+        flowConfig: {
+          input: { emoji: "📥", label: "Source", color: "rgba(59, 130, 246, 0.15)" },
+          output: { emoji: "🧠", label: "Model", color: "rgba(168, 85, 247, 0.15)" }
+        }
+      };
+    }
+    
+    return {
+      insights: [],
+      flowConfig: {
+        input: { emoji: "📥", label: "Input", color: "rgba(100, 100, 100, 0.15)" },
+        output: { emoji: "📤", label: "Output", color: "rgba(100, 100, 100, 0.15)" }
+      }
+    };
+  };
+
+  const config = getMetadataConfig();
+
+  // Execute inference/test
+  const handleExecute = async () => {
+    if (!prompt.trim()) return;
+    
+    setExecuting(true);
+    setOutput(prev => [...prev, 
+      { type: "user", text: `> ${prompt}` },
+      { type: "system", text: `Processing with ${tool.name}...` }
+    ]);
+
+    try {
+      // Call backend intent search endpoint
+      const response = await fetch('/api/search/intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          query: prompt,
+          resource_types: [tool.category.toLowerCase()],
+          limit: 1
+        })
+      });
+
+      const data = await response.json();
+      
+      setOutput(prev => [...prev, 
+        { type: "success", text: `✓ Execution complete` },
+        { type: "result", text: JSON.stringify(data, null, 2) }
+      ]);
+    } catch (error) {
+      setOutput(prev => [...prev, 
+        { type: "error", text: `✗ Error: ${error.message}` }
+      ]);
+    } finally {
+      setExecuting(false);
+      setPrompt("");
+    }
+  };
+
+  // Simplified Blueprint View with Dynamic Trinity
   const Blueprint = () => (
     <div style={{ flex: 1, position: "relative", background: dk ? "rgba(0,0,0,0.2)" : "rgba(0,0,0,0.02)", borderRadius: 24, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
       <div style={{ position: "absolute", inset: 0, opacity: 0.1, backgroundImage: `radial-gradient(${dk ? "#fff" : "#000"} 1px, transparent 1px)`, backgroundSize: "30px 30px" }} />
       <div style={{ display: "flex", alignItems: "center", gap: 60, zIndex: 1, padding: 40 }}>
-        {/* Dataset Node */}
+        {/* Input Node - Dynamic based on type */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 68, height: 68, borderRadius: 18, background: "rgba(245, 158, 11, 0.15)", border: "1px solid rgba(245, 158, 11, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>🗄️</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)" }}>Dataset</div>
+          <div style={{ width: 68, height: 68, borderRadius: 18, background: config.flowConfig.input.color, border: `1px solid ${config.flowConfig.input.color.replace('0.15', '0.3')}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>{config.flowConfig.input.emoji}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)" }}>{config.flowConfig.input.label}</div>
+          <div style={{ fontSize: 10, opacity: 0.3, fontFamily: "'JetBrains Mono', monospace" }}>
+            {tool.category === "Dataset" ? `${(tool.downloads / 1000000).toFixed(1)}GB` : "Input"}
+          </div>
         </div>
         <Icon d={Icons.ChevronR} size={28} color={tool.accentColor} />
-        {/* Model Node (Featured) */}
+        {/* Featured Resource Node */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, transform: "scale(1.2)" }}>
           <div style={{ width: 90, height: 90, borderRadius: 28, background: `${tool.accentColor}25`, border: `2px solid ${tool.accentColor}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 36, boxShadow: `0 0 30px ${tool.accentColor}50`, position: "relative" }}>
             {tool.iconEmoji}
@@ -531,12 +666,16 @@ function ResourceWorkbench({ tool, onClose, isDark }) {
             </div>
           </div>
           <div style={{ fontSize: 15, fontWeight: 800, color: tool.accentColor, marginTop: 8 }}>{tool.name}</div>
+          <div style={{ fontSize: 10, opacity: 0.3, fontFamily: "'JetBrains Mono', monospace" }}>
+            {tool.category === "Model" ? "41.6M Params" : tool.category === "API" ? `${tool.latency}ms` : `${tool.stars} ⭐`}
+          </div>
         </div>
         <Icon d={Icons.ChevronR} size={28} color={tool.accentColor} />
-        {/* API / App Node */}
+        {/* Output Node - Dynamic based on type */}
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 68, height: 68, borderRadius: 18, background: "rgba(59, 130, 246, 0.15)", border: "1px solid rgba(59, 130, 246, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>🔌</div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)" }}>App/API</div>
+          <div style={{ width: 68, height: 68, borderRadius: 18, background: config.flowConfig.output.color, border: `1px solid ${config.flowConfig.output.color.replace('0.15', '0.3')}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>{config.flowConfig.output.emoji}</div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)" }}>{config.flowConfig.output.label}</div>
+          <div style={{ fontSize: 10, opacity: 0.3, fontFamily: "'JetBrains Mono', monospace" }}>Output</div>
         </div>
       </div>
       <div style={{ position: "absolute", bottom: 20, left: 24, padding: "10px 20px", borderRadius: 99, background: dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${dk ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, fontSize: 12, fontWeight: 700, color: dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", gap: 8 }}>
@@ -553,7 +692,7 @@ function ResourceWorkbench({ tool, onClose, isDark }) {
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
             <div style={{ width: 50, height: 50, borderRadius: 16, background: `${tool.accentColor}15`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>{tool.iconEmoji}</div>
             <div>
-              <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em" }}>{tool.name} <span style={{ opacity: 0.3, fontWeight: 500, marginLeft: 8 }}>Model Workbench</span></div>
+              <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em" }}>{tool.name} <span style={{ opacity: 0.3, fontWeight: 500, marginLeft: 8 }}>{tool.category} Workbench</span></div>
               <div style={{ fontSize: 13, opacity: 0.5 }}>{tool.provider} • Verified Framework</div>
             </div>
           </div>
@@ -575,12 +714,18 @@ function ResourceWorkbench({ tool, onClose, isDark }) {
               <div style={{ display: "flex", gap: 8 }}>{["Datasets", "Transforms", "Apps"].map(t => <button key={t} style={{ padding: "6px 14px", borderRadius: 8, background: dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", border: "none", fontSize: 11, fontWeight: 700, cursor: "pointer", opacity: 0.6 }}>+ {t}</button>)}</div>
             </div>
             <Blueprint />
-            <div style={{ height: 180, background: dk ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)", borderRadius: 24, padding: 24, border: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
-              <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 12, textTransform: "uppercase", color: tool.accentColor }}>Model Insights</div>
+            <div style={{ minHeight: 180, background: dk ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)", borderRadius: 24, padding: 24, border: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
+              <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 12, textTransform: "uppercase", color: tool.accentColor }}>{tool.category} Insights</div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
-                <div><div style={{ opacity: 0.4, fontSize: 11 }}>Precision</div><div style={{ fontWeight: 800, fontSize: 15 }}>FP16 / BF16</div></div>
-                <div><div style={{ opacity: 0.4, fontSize: 11 }}>Context Window</div><div style={{ fontWeight: 800, fontSize: 15 }}>128k Tokens</div></div>
-                <div><div style={{ opacity: 0.4, fontSize: 11 }}>Optimization</div><div style={{ fontWeight: 800, fontSize: 15 }}>Triton Kernel</div></div>
+                {config.insights.map((insight, idx) => (
+                  <div key={idx}>
+                    <div style={{ opacity: 0.4, fontSize: 11, display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <Icon d={insight.icon} size={12} />
+                      {insight.label}
+                    </div>
+                    <div style={{ fontWeight: 800, fontSize: 15 }}>{insight.value}</div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -598,29 +743,48 @@ function ResourceWorkbench({ tool, onClose, isDark }) {
                 <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.3 }}>RESPONSE</span>
               </div>
               <textarea
-                placeholder="Type your prompt here..."
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && e.ctrlKey) {
+                    handleExecute();
+                  }
+                }}
+                placeholder="Type your prompt here... (Ctrl+Enter to execute)"
                 style={{ flex: 1, background: "none", border: "none", padding: 24, paddingBottom: 12, resize: "none", fontSize: 14, fontFamily: "'JetBrains Mono', monospace", color: "inherit", outline: "none" }}
               />
               <div style={{ padding: 20, display: "flex", alignItems: "center", gap: 16 }}>
                 <div style={{ flex: 1, height: 1, background: dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)" }} />
                 <button
+                  onClick={handleExecute}
+                  disabled={executing || !prompt.trim()}
                   onMouseEnter={() => setPulse(true)}
                   onMouseLeave={() => setPulse(false)}
                   style={{
-                    padding: "0 32px", height: 50, borderRadius: 14, background: tool.accentColor, border: "none", color: "#fff", fontWeight: 800, cursor: "pointer",
-                    boxShadow: pulse ? `0 0 30px ${tool.accentColor}80` : "none", transition: "all 0.3s",
-                    display: "flex", alignItems: "center", gap: 10, fontSize: 15
+                    padding: "0 32px", height: 50, borderRadius: 14, background: executing ? "rgba(128,128,128,0.3)" : tool.accentColor, border: "none", color: "#fff", fontWeight: 800, cursor: executing || !prompt.trim() ? "not-allowed" : "pointer",
+                    boxShadow: pulse && !executing ? `0 0 30px ${tool.accentColor}80` : "none", transition: "all 0.3s",
+                    display: "flex", alignItems: "center", gap: 10, fontSize: 15,
+                    opacity: executing || !prompt.trim() ? 0.5 : 1
                   }}
                 >
-                  <Icon d={Icons.Play} size={18} fill="#fff" /> EXECUTE
+                  <Icon d={Icons.Play} size={18} fill="#fff" /> {executing ? "EXECUTING..." : "EXECUTE"}
                 </button>
               </div>
             </div>
 
             <div style={{ height: 280, background: dk ? "#0a1020" : "#fff", borderRadius: 24, padding: 24, border: `1px solid ${dk ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`, overflowY: "auto", fontFamily: "'JetBrains Mono', monospace", fontSize: 13 }}>
               <div style={{ opacity: 0.3, marginBottom: 12, fontSize: 11, fontWeight: 800 }}>LIVE OUTPUT</div>
-              <div style={{ color: "#00FFA3" }}>[SYSTEM]: Inializing model {tool.name}...</div>
-              <div style={{ marginTop: 8 }}>Ready for input. Prompt context active.</div>
+              {output.map((line, idx) => (
+                <div key={idx} style={{ 
+                  marginBottom: 8,
+                  color: line.type === "system" ? "#00FFA3" : 
+                        line.type === "error" ? "#ef4444" : 
+                        line.type === "success" ? "#10B981" :
+                        line.type === "user" ? tool.accentColor : "inherit"
+                }}>
+                  {line.text}
+                </div>
+              ))}
             </div>
           </div>
         </div>
