@@ -97,7 +97,7 @@ const MOCK_TOOLS = [
 ];
 
 // Map a backend resource to ToolCard-compatible shape
-function mapResource(r, index = 0) {
+function mapResource(r, index = 0, contextualRank = null) {
   // Normalize resource_type to match frontend categories (capitalize first letter)
   const normalizeType = (type) => {
     if (!type) return "API";
@@ -108,7 +108,7 @@ function mapResource(r, index = 0) {
     return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
   };
   
-  const resourceType = normalizeType(r.resource_type || r.type);
+  const resourceType = normalizeType(r.category || r.resource_type || r.type);
   const meta = TYPE_META[resourceType] || { color: "#6B7280", emoji: "📦" };
   
   // Detect source from URL if not provided
@@ -130,36 +130,66 @@ function mapResource(r, index = 0) {
   const latencyRaw = parseFloat(r.latency_ms ?? r.p99_latency ?? 0);
   const latency = latencyRaw > 0 ? latencyRaw : Math.floor(Math.random() * 80 + 10);
 
+  // Context-aware install command based on resource type
   let installCommand = r.install_command || r.endpoint_url || "";
   if (!installCommand) {
     const slug = r.name?.replace(/\s+/g, "-").toLowerCase() || "resource";
-    if (resourceType === "API") installCommand = `curl -X POST https://api.devstore.ai/v1/${slug}`;
-    else if (resourceType === "Model") installCommand = `pip install devstore && dv.load("${slug}")`;
-    else installCommand = `load_dataset("${slug}", split="train")`;
+    const sourceUrl = r.source_url || "";
+    
+    if (resourceType === "API") {
+      // For APIs, show actual API endpoint or curl command
+      if (sourceUrl.includes('github.com')) {
+        installCommand = `curl -X GET ${sourceUrl}/api/v1/endpoint`;
+      } else {
+        installCommand = `curl -X POST https://api.devstore.ai/v1/${slug}`;
+      }
+    } else if (resourceType === "Model") {
+      // For models, show inference/download command
+      if (sourceUrl.includes('huggingface.co')) {
+        const modelId = sourceUrl.split('huggingface.co/')[1] || slug;
+        installCommand = `from transformers import pipeline; model = pipeline("${modelId}")`;
+      } else {
+        installCommand = `pip install devstore && dv.load("${slug}")`;
+      }
+    } else if (resourceType === "Dataset") {
+      // For datasets, show download command
+      if (sourceUrl.includes('huggingface.co')) {
+        const datasetId = sourceUrl.split('huggingface.co/datasets/')[1] || slug;
+        installCommand = `from datasets import load_dataset; ds = load_dataset("${datasetId}")`;
+      } else if (sourceUrl.includes('kaggle.com')) {
+        installCommand = `kaggle datasets download -d ${slug}`;
+      } else {
+        installCommand = `load_dataset("${slug}", split="train")`;
+      }
+    }
   }
+
+  // Use contextual rank if provided (for filtered views), otherwise use database rank or index
+  const displayRank = contextualRank !== null ? contextualRank : (r.category_rank || r.rank || (index < 10 ? index + 1 : 0));
 
   return {
     id: r.id || String(Math.random()),
     name: r.name,
-    category: resourceType,  // Fixed: now properly capitalized
-    pricingType: r.pricing_type || "free",  // FIXED: Add pricing type from database
+    category: resourceType,  // Properly capitalized category
+    pricingType: r.pricing_type || "free",  // Actual pricing from database
     description: r.description || "",
     installCommand,
     latency,
     iconEmoji: meta.emoji,
-    status: r.status || (r.is_available !== false ? "stable" : "down"),
-    stars: stars,  // Fixed: separate from downloads
-    downloads: downloads,  // Fixed: separate from stars
-    rank: r.rank || (typeof index === 'number' && index < 10 ? index + 1 : 0),
+    status: r.health_status || r.status || (r.is_available !== false ? "stable" : "down"),
+    stars: stars,
+    downloads: downloads,
+    rank: displayRank,  // Context-aware ranking
     accentColor: meta.color,
-    docsUrl: r.docs_url || "https://docs.example.com",
-    source: source,  // NEW: data source
-    sourceIcon: sourceMeta.icon,  // NEW: source icon
-    sourceColor: sourceMeta.color,  // NEW: source color
-    sourceLabel: sourceMeta.label,  // NEW: source label
-    language: r.language || r.metadata?.language,  // NEW: programming language
-    private: r.private || r.metadata?.private,  // NEW: privacy status
-    gated: r.gated || r.metadata?.gated,  // NEW: access restriction
+    docsUrl: r.documentation_url || r.docs_url || r.source_url || null,  // Null-safe docs URL
+    source: source,
+    sourceIcon: sourceMeta.icon,
+    sourceColor: sourceMeta.color,
+    sourceLabel: sourceMeta.label,
+    provider: sourceMeta.label,  // Add provider field for display
+    language: r.language || r.metadata?.language,
+    private: r.private || r.metadata?.private,
+    gated: r.gated || r.metadata?.gated,
   };
 }
 
@@ -419,12 +449,30 @@ function ToolCard({ tool, index, isDark = true }) {
           )}
         </div>
 
-        <a href={tool.docsUrl} target="_blank" rel="noopener noreferrer" style={{
-          background: dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", borderRadius: 10, padding: "8px 12px",
-          border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, cursor: "pointer",
-          color: dk ? "#fff" : "#000", fontSize: 11, fontWeight: 700, fontFamily: "'DM Sans', sans-serif",
-          textDecoration: "none"
-        }}>
+        <a 
+          href={tool.docsUrl || "#"} 
+          target={tool.docsUrl ? "_blank" : "_self"}
+          rel="noopener noreferrer" 
+          onClick={(e) => { if (!tool.docsUrl) e.preventDefault(); }}
+          style={{
+            background: tool.docsUrl 
+              ? (dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)")
+              : (dk ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)"),
+            borderRadius: 10, 
+            padding: "8px 12px",
+            border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, 
+            cursor: tool.docsUrl ? "pointer" : "not-allowed",
+            color: tool.docsUrl 
+              ? (dk ? "#fff" : "#000")
+              : (dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.3)"),
+            fontSize: 11, 
+            fontWeight: 700, 
+            fontFamily: "'DM Sans', sans-serif",
+            textDecoration: "none",
+            opacity: tool.docsUrl ? 1 : 0.5,
+            transition: "all 0.2s"
+          }}
+        >
           Docs
         </a>
       </div>
@@ -1024,7 +1072,11 @@ export default function DevStoreDashboard() {
     if (trendingLoading) {
       setLoading(true);
     } else if (!query && trendingData) {
-      let results = (trendingData.results || []).map((r, idx) => mapResource(r, idx));
+      let results = (trendingData.results || []).map((r, idx) => {
+        // Calculate contextual rank based on current filter state
+        const contextualRank = idx + 1; // Rank within filtered results
+        return mapResource(r, idx, contextualRank);
+      });
       if (isTopChart) {
         results = results.sort((a, b) => (a.rank || 999) - (b.rank || 999));
       }
@@ -1032,7 +1084,7 @@ export default function DevStoreDashboard() {
       setLoading(false);
     } else if (!query && trendingError) {
       setApiOnline(false); setErrorMsg("Backend offline — showing demo data");
-      const mappedMocks = MOCK_TOOLS.map((r, idx) => mapResource(r, idx));
+      const mappedMocks = MOCK_TOOLS.map((r, idx) => mapResource(r, idx, idx + 1));
       let sortedMocks = [...mappedMocks];
 
       if (activeDiscovery === "Trending") {
@@ -1046,6 +1098,9 @@ export default function DevStoreDashboard() {
       } else if (activeDiscovery === "Most Popular") {
         sortedMocks.sort((a, b) => b.downloads - a.downloads);
       }
+
+      // Recalculate ranks after filtering
+      sortedMocks = sortedMocks.map((r, idx) => ({ ...r, rank: idx + 1 }));
 
       if (isTopChart) sortedMocks.sort((a, b) => a.rank - b.rank);
       setFiltered(sortedMocks);
@@ -1074,7 +1129,9 @@ export default function DevStoreDashboard() {
         // Convert category to lowercase for backend API
         const categoryLower = activeCategory === "All" ? null : activeCategory.toLowerCase();
         const resp = await apiService.search(query, { resource_types: categoryLower ? [categoryLower] : null, limit: 40 });
-        setFiltered((resp.results || []).map((r, idx) => mapResource(r, idx)));
+        // Map with contextual ranks for search results
+        const mappedResults = (resp.results || []).map((r, idx) => mapResource(r, idx, idx + 1));
+        setFiltered(mappedResults);
         setApiOnline(true);
       } catch (err) {
         console.error("Search failed:", err);
@@ -1083,12 +1140,16 @@ export default function DevStoreDashboard() {
 
         // Use MOCK_TOOLS as source if backend is down and 'tools' is empty
         const sourceData = tools.length > 0 ? tools : MOCK_TOOLS;
-        const mappedSource = sourceData.map((r, idx) => mapResource(r, idx));
+        const mappedSource = sourceData.map((r, idx) => mapResource(r, idx, null));
 
-        setFiltered(mappedSource.filter(t =>
+        const filtered = mappedSource.filter(t =>
           (activeCategory === "All" || t.category === activeCategory) &&
           (t.name.toLowerCase().includes(lq) || t.description.toLowerCase().includes(lq))
-        ));
+        );
+        
+        // Recalculate ranks after filtering
+        const rankedFiltered = filtered.map((r, idx) => ({ ...r, rank: idx + 1 }));
+        setFiltered(rankedFiltered);
       } finally { setSearchLoading(false); }
     }, 400); // Increased debounce to 400ms for better UX
   }, [query, activeCategory, tools]); // Added 'tools' to dependency array for local fallback
