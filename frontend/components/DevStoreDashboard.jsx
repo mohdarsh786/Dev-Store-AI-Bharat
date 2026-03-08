@@ -142,6 +142,7 @@ function mapResource(r, index = 0) {
     id: r.id || String(Math.random()),
     name: r.name,
     category: resourceType,  // Fixed: now properly capitalized
+    pricingType: r.pricing_type || "free",  // FIXED: Add pricing type from database
     description: r.description || "",
     installCommand,
     latency,
