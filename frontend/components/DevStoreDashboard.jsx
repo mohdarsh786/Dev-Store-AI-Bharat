@@ -108,10 +108,9 @@ function mapResource(r, index = 0, contextualRank = null) {
     if (lower === "dataset") return "Dataset";
     return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
   };
-  
   const resourceType = normalizeType(r.category || r.resource_type || r.type);
   const meta = TYPE_META[resourceType] || { color: "#6B7280", emoji: "📦" };
-  
+
   // Detect source from URL if not provided
   const detectSource = (url) => {
     if (!url) return 'github';
@@ -120,14 +119,14 @@ function mapResource(r, index = 0, contextualRank = null) {
     if (url.includes('kaggle.com')) return 'kaggle';
     return 'github';
   };
-  
+
   const source = r.source || detectSource(r.source_url);
   const sourceMeta = SOURCE_META[source] || SOURCE_META.github;
-  
+
   // Separate stars and downloads (don't conflate)
   const stars = r.github_stars || r.stars || 0;
   const downloads = r.downloads || r.download_count || 0;
-  
+
   const latencyRaw = parseFloat(r.latency_ms ?? r.p99_latency ?? 0);
   const latency = latencyRaw > 0 ? latencyRaw : Math.floor(Math.random() * 80 + 10);
 
@@ -927,7 +926,7 @@ function AuthPortal({ isDark, onClose }) {
           {mode === "login" ? "Welcome Back" : "Create Account"}
         </h1>
         <p style={{ fontSize: 14, opacity: 0.5, marginBottom: 24 }}>
-          {mode === "login" 
+          {mode === "login"
             ? "Sign in to access your DevStore resources and API keys."
             : "Join the world's most powerful Developer's marketplace."}
         </p>
@@ -943,7 +942,7 @@ function AuthPortal({ isDark, onClose }) {
           e.preventDefault();
           setError("");
           setLoading(true);
-          
+
           if (mode === "register") {
             // In Mock mode, we just pretend to register and then log them in
             setTimeout(() => {
@@ -958,7 +957,7 @@ function AuthPortal({ isDark, onClose }) {
               password,
               redirect: false,
             });
-            
+
             if (res?.error) {
               setError("Invalid email or password.");
               setLoading(false);
@@ -1158,7 +1157,7 @@ function AIChatPanel({ onClose, isDark = true, isMobile = false }) {
     try {
       // Use RAG chat endpoint instead of regular search
       const resp = await apiService.ragChat(q, "default", {});
-      
+
       // Display the AI answer
       setMessages(prev => [
         ...prev,
@@ -1520,185 +1519,185 @@ export default function DevStoreDashboard() {
         {/* Main content + Intent Discovery wrapper */}
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           <main className="ds-main" style={{ flex: 1, minWidth: 0 }}>
-          <header style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: isMobile ? 10 : 16, padding: `14px ${pad}px`, flexWrap: isMobile ? "wrap" : "nowrap", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(59,130,246,0.1)"}`, background: dk ? "rgba(8,12,24,0.8)" : "rgba(240,244,255,0.8)", backdropFilter: "blur(12px)" }}>
-            {isMobile && (
-              <Tooltip text="Open menu" position="bottom">
-                <button onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", color: dk ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 10 }}>
-                  <Icon d={Icons.Menu} size={20} />
-                </button>
-              </Tooltip>
-            )}
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 10, color: dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.65)", textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 600 }}>Dev-Store · AI Bharat</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: dk ? "rgba(255,255,255,0.82)" : "rgba(0,0,0,0.9)", letterSpacing: "-0.02em" }}>Tools & Integrations</div>
-            </div>
-
-            {/* Search */}
-            <div style={{ flex: isMobile ? "1 1 100%" : 1, maxWidth: 640, margin: isMobile ? "8px auto 4px" : "0 auto", position: "relative", order: isMobile ? 10 : 0, width: isMobile ? "100%" : "auto" }}>
-              <div style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
-                <Icon d={Icons.Search} size={15} color={searchLoading ? A : (dk ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.5)")} />
-              </div>
-              <input type="text" value={query} onChange={e => setQuery(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-                placeholder={focused ? "Search via OpenSearch + Bedrock AI..." : ghostText}
-                style={{ width: "100%", borderRadius: 99, padding: isMobile ? "10px 20px 10px 42px" : "12px 20px 12px 42px", background: dk ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.75)", border: `1px solid ${focused ? `${A}99` : (dk ? "rgba(255,255,255,0.08)" : "rgba(59,130,246,0.15)")}`, color: dk ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.95)", fontSize: 14, fontFamily: "'DM Sans', sans-serif", boxShadow: focused ? `0 0 0 3px ${A}20` : "none", transition: "border-color 0.25s, box-shadow 0.25s" }} />
-              {searchLoading && <div style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", display: "flex", gap: 3 }}>{[0, 0.15, 0.3].map(d => <div key={d} style={{ width: 4, height: 4, borderRadius: "50%", background: A, animation: `pulseGlow 1s ${d}s infinite` }} />)}</div>}
-            </div>
-
-            {/* Stats + Theme toggle */}
-            <div style={{ display: "flex", gap: 8, flexShrink: 0, alignItems: "center" }}>
-              {!isMobile && <>
-                <Tooltip text="Backend API status" position="bottom">
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 99, background: apiOnline === true ? "rgba(0,200,130,0.06)" : apiOnline === false ? "rgba(239,68,68,0.06)" : (dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"), border: `1px solid ${apiOnline === true ? "rgba(0,200,130,0.2)" : apiOnline === false ? "rgba(239,68,68,0.2)" : (dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)")}`, fontSize: 11, color: apiOnline === true ? "#059669" : apiOnline === false ? "#ef4444" : (dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.6)") }}>
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: apiOnline === true ? "#059669" : apiOnline === false ? "#ef4444" : (dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)"), animation: apiOnline === true ? "pulseGlow 2s infinite" : "none" }} />
-                    {apiOnline === true ? "API Live" : apiOnline === false ? "Offline" : "Checking…"}
-                  </div>
-                </Tooltip>
-                {[{ icon: "TrendUp", color: "#059669", label: `${stableCount} live`, tip: "Live resources" }, { icon: "Package", color: dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.55)", label: `${tools.length} tools`, tip: "Total tools" }].map(s => (
-                  <Tooltip key={s.label} text={s.tip} position="bottom">
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 14px", borderRadius: 99, background: dk ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.6)", border: `1px solid ${dk ? "rgba(255,255,255,0.06)" : "rgba(59,130,246,0.1)"}`, fontSize: 12, color: dk ? "rgba(255,255,255,0.42)" : "rgba(0,0,0,0.7)" }}>
-                      <Icon d={Icons[s.icon]} size={13} color={s.color} />{s.label}
-                    </div>
-                  </Tooltip>
-                ))}
-              </>}
-              <Tooltip text="Toggle Hinglish Mode" position="bottom">
-                <button onClick={() => setIsHinglish(!isHinglish)} style={{
-                  padding: "0 12px", height: 38, borderRadius: 12, display: "flex", alignItems: "center", gap: 6,
-                  background: isHinglish ? "linear-gradient(135deg, #F59E0B22, #F59E0B0A)" : (dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"),
-                  border: `1px solid ${isHinglish ? "#F59E0B55" : (dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
-                  color: isHinglish ? "#F59E0B" : (dk ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)"),
-                  fontWeight: 700, fontSize: 13, cursor: "pointer", transition: "all 0.3s ease"
-                }}>
-                  🇮🇳 {isHinglish ? "Hinglish: ON" : "Hinglish: OFF"}
-                </button>
-              </Tooltip>
-              <Tooltip text={dk ? "Switch to Light mode" : "Switch to Dark mode"} position="bottom">
-                <button onClick={toggleTheme} style={{ width: 38, height: 38, borderRadius: 12, background: dk ? `linear-gradient(135deg,${A}22,${A}0A)` : `linear-gradient(135deg,${A}15,${A}08)`, border: `1px solid ${dk ? `${A}30` : `${A}20`}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: dk ? AL : A, transition: "all 0.3s ease", boxShadow: `0 2px 8px rgba(59,130,246,0.15)` }}>
-                  <Icon d={dk ? Icons.Sun : Icons.Moon} size={16} />
-                </button>
-              </Tooltip>
-              <button
-                onClick={() => setShowSubmission(true)}
-                style={{
-                  height: 38, padding: isMobile ? "0 14px" : "0 20px", borderRadius: 12,
-                  background: `linear-gradient(135deg, ${A}, ${AL})`, color: "#fff",
-                  display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 13,
-                  cursor: "pointer", border: "none", transition: "transform 0.2s, box-shadow 0.2s",
-                  boxShadow: `0 4px 15px ${A}30`
-                }}
-                onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
-                onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
-              >
-                <Icon d={Icons.Plus} size={16} color="#fff" />
-                {!isMobile && "Create App"}
-              </button>
-            </div>
-          </header>
-
-          {/* New Horizontal Row of Filter Pills */}
-          <div style={{ flexShrink: 0, padding: `8px ${pad}px`, background: dk ? "rgba(8,12,24,0.4)" : "rgba(240,244,255,0.4)", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"}` }}>
-            <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", gap: 10, overflowX: "auto" }} className="hide-scroll">
-              {["Trending", "Top Free", "Top Paid", "Most Popular"].map(f => (
-                <button
-                  key={f}
-                  onClick={() => setActiveDiscovery(f)}
-                  style={{
-                    padding: "6px 14px", borderRadius: 99, fontSize: 11, fontWeight: 700,
-                    cursor: "pointer", border: "1px solid transparent", transition: "all 0.2s",
-                    background: activeDiscovery === f ? dk ? "rgba(255,255,255,0.1)" : "rgba(59,130,246,0.1)" : "transparent",
-                    color: activeDiscovery === f ? A : dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)",
-                    borderColor: activeDiscovery === f ? `${A}40` : "transparent"
-                  }}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Category Pill Bar */}
-          <div className="hide-scroll" style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: isMobile ? 12 : 8, padding: isMobile ? `14px ${pad}px` : `12px ${pad}px`, borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.04)" : "rgba(59,130,246,0.08)"}`, background: dk ? "rgba(10,15,30,0.6)" : "rgba(234,239,255,0.6)", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 auto", maxWidth: 1600, width: "100%" }}>
-              {CATEGORIES.map(cat => (
-                <Tooltip key={cat} text={`Filter: ${cat === "All" ? "All Types" : cat}`} position="bottom">
-                  <button className="cat-btn" onClick={() => { setActiveCategory(cat); setQuery(""); }}
-                    style={{ padding: "7px 16px", borderRadius: 99, fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 12, cursor: "pointer", flexShrink: 0, transition: "all 0.2s", background: activeCategory === cat ? A : (dk ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.85)"), color: activeCategory === cat ? "#fff" : (dk ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.75)"), border: `1px solid ${activeCategory === cat ? A : (dk ? "rgba(255,255,255,0.06)" : "rgba(59,130,246,0.2)")}` }}>
-                    {cat === "All" ? "All Types" : cat}
+            <header style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: isMobile ? 10 : 16, padding: `14px ${pad}px`, flexWrap: isMobile ? "wrap" : "nowrap", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(59,130,246,0.1)"}`, background: dk ? "rgba(8,12,24,0.8)" : "rgba(240,244,255,0.8)", backdropFilter: "blur(12px)" }}>
+              {isMobile && (
+                <Tooltip text="Open menu" position="bottom">
+                  <button onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", color: dk ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 10 }}>
+                    <Icon d={Icons.Menu} size={20} />
                   </button>
                 </Tooltip>
-              ))}
-              {errorMsg && <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(239,68,68,0.7)", padding: "6px 12px", borderRadius: 99, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", flexShrink: 0 }}>⚠ {errorMsg}</div>}
-              <div style={{ marginLeft: "auto", flexShrink: 0, display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: dk ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.6)" }}>
-                <Icon d={Icons.ChevronR} size={13} />{loading ? "—" : filtered.length} result{filtered.length !== 1 ? "s" : ""}
-              </div>
-            </div>
-          </div>
-
-          {/* Bento Grid Container */}
-          <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: `24px ${pad}px` }}>
-            <div style={{ maxWidth: 1600, margin: "0 auto", width: "100%" }}>
-
-              {/* Intent Discovery Stacked on Mobile */}
-              {isMobile && showChat && (
-                <div style={{ marginBottom: 24, borderRadius: 24, overflow: "hidden", border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, background: dk ? "rgba(10,16,32,0.6)" : "rgba(255,255,255,0.6)", backdropFilter: "blur(20px)" }}>
-                  <AIChatPanel onClose={() => setShowChat(false)} isDark={dk} isMobile={isMobile} />
-                </div>
               )}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 10, color: dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.65)", textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 600 }}>Dev-Store · AI Bharat</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: dk ? "rgba(255,255,255,0.82)" : "rgba(0,0,0,0.9)", letterSpacing: "-0.02em" }}>Tools & Integrations</div>
+              </div>
 
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: width >= 1100 ? "repeat(12, 1fr)" : (width >= 768 ? "repeat(2, 1fr)" : "1fr"),
-                gap: 20,
-                gridAutoFlow: "dense",
-                position: "relative",
-                zIndex: 10
-              }}>
-                {loading
-                  ? Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} style={{ gridColumn: width >= 1100 ? (i % 7 === 0 ? "span 6" : "span 3") : "span 1" }}>
-                      <SkeletonCard index={i} isDark={dk} />
+              {/* Search */}
+              <div style={{ flex: isMobile ? "1 1 100%" : 1, maxWidth: 640, margin: isMobile ? "8px auto 4px" : "0 auto", position: "relative", order: isMobile ? 10 : 0, width: isMobile ? "100%" : "auto" }}>
+                <div style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+                  <Icon d={Icons.Search} size={15} color={searchLoading ? A : (dk ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.5)")} />
+                </div>
+                <input type="text" value={query} onChange={e => setQuery(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+                  placeholder={focused ? "Search via OpenSearch + Bedrock AI..." : ghostText}
+                  style={{ width: "100%", borderRadius: 99, padding: isMobile ? "10px 20px 10px 42px" : "12px 20px 12px 42px", background: dk ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.75)", border: `1px solid ${focused ? `${A}99` : (dk ? "rgba(255,255,255,0.08)" : "rgba(59,130,246,0.15)")}`, color: dk ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.95)", fontSize: 14, fontFamily: "'DM Sans', sans-serif", boxShadow: focused ? `0 0 0 3px ${A}20` : "none", transition: "border-color 0.25s, box-shadow 0.25s" }} />
+                {searchLoading && <div style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", display: "flex", gap: 3 }}>{[0, 0.15, 0.3].map(d => <div key={d} style={{ width: 4, height: 4, borderRadius: "50%", background: A, animation: `pulseGlow 1s ${d}s infinite` }} />)}</div>}
+              </div>
+
+              {/* Stats + Theme toggle */}
+              <div style={{ display: "flex", gap: 8, flexShrink: 0, alignItems: "center" }}>
+                {!isMobile && <>
+                  <Tooltip text="Backend API status" position="bottom">
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 99, background: apiOnline === true ? "rgba(0,200,130,0.06)" : apiOnline === false ? "rgba(239,68,68,0.06)" : (dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"), border: `1px solid ${apiOnline === true ? "rgba(0,200,130,0.2)" : apiOnline === false ? "rgba(239,68,68,0.2)" : (dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)")}`, fontSize: 11, color: apiOnline === true ? "#059669" : apiOnline === false ? "#ef4444" : (dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.6)") }}>
+                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: apiOnline === true ? "#059669" : apiOnline === false ? "#ef4444" : (dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)"), animation: apiOnline === true ? "pulseGlow 2s infinite" : "none" }} />
+                      {apiOnline === true ? "API Live" : apiOnline === false ? "Offline" : "Checking…"}
                     </div>
-                  ))
-                  : filtered.length === 0
-                    ? <div style={{ gridColumn: "1/-1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "60px 0" }}>
-                      <div style={{ fontSize: 36 }}>🔍</div>
-                      <div style={{ fontSize: 14, color: dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.6)" }}>No results found</div>
-                      <button onClick={() => { setQuery(""); setActiveCategory("All"); setActiveDiscovery("Trending"); }} style={{ padding: "8px 20px", borderRadius: 99, border: `1px solid ${A}55`, background: "none", color: A, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Clear filters</button>
-                    </div>
-                    : filtered.map((tool, i) => {
-                      const isFeatured = i % 7 === 0;
-                      return (
-                        <div key={tool.id} style={{
-                          gridColumn: width >= 1100 ? (isFeatured ? "span 6" : "span 3") : "span 1",
-                          cursor: "pointer"
-                        }} onClick={() => setSelectedTool(tool)}>
-                          <ToolCard tool={tool} index={i} isDark={dk} />
-                        </div>
-                      );
-                    })
-                }
+                  </Tooltip>
+                  {[{ icon: "TrendUp", color: "#059669", label: `${stableCount} live`, tip: "Live resources" }, { icon: "Package", color: dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.55)", label: `${tools.length} tools`, tip: "Total tools" }].map(s => (
+                    <Tooltip key={s.label} text={s.tip} position="bottom">
+                      <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 14px", borderRadius: 99, background: dk ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.6)", border: `1px solid ${dk ? "rgba(255,255,255,0.06)" : "rgba(59,130,246,0.1)"}`, fontSize: 12, color: dk ? "rgba(255,255,255,0.42)" : "rgba(0,0,0,0.7)" }}>
+                        <Icon d={Icons[s.icon]} size={13} color={s.color} />{s.label}
+                      </div>
+                    </Tooltip>
+                  ))}
+                </>}
+                <Tooltip text="Toggle Hinglish Mode" position="bottom">
+                  <button onClick={() => setIsHinglish(!isHinglish)} style={{
+                    padding: "0 12px", height: 38, borderRadius: 12, display: "flex", alignItems: "center", gap: 6,
+                    background: isHinglish ? "linear-gradient(135deg, #F59E0B22, #F59E0B0A)" : (dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"),
+                    border: `1px solid ${isHinglish ? "#F59E0B55" : (dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
+                    color: isHinglish ? "#F59E0B" : (dk ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)"),
+                    fontWeight: 700, fontSize: 13, cursor: "pointer", transition: "all 0.3s ease"
+                  }}>
+                    🇮🇳 {isHinglish ? "Hinglish: ON" : "Hinglish: OFF"}
+                  </button>
+                </Tooltip>
+                <Tooltip text={dk ? "Switch to Light mode" : "Switch to Dark mode"} position="bottom">
+                  <button onClick={toggleTheme} style={{ width: 38, height: 38, borderRadius: 12, background: dk ? `linear-gradient(135deg,${A}22,${A}0A)` : `linear-gradient(135deg,${A}15,${A}08)`, border: `1px solid ${dk ? `${A}30` : `${A}20`}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: dk ? AL : A, transition: "all 0.3s ease", boxShadow: `0 2px 8px rgba(59,130,246,0.15)` }}>
+                    <Icon d={dk ? Icons.Sun : Icons.Moon} size={16} />
+                  </button>
+                </Tooltip>
+                <button
+                  onClick={() => setShowSubmission(true)}
+                  style={{
+                    height: 38, padding: isMobile ? "0 14px" : "0 20px", borderRadius: 12,
+                    background: `linear-gradient(135deg, ${A}, ${AL})`, color: "#fff",
+                    display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 13,
+                    cursor: "pointer", border: "none", transition: "transform 0.2s, box-shadow 0.2s",
+                    boxShadow: `0 4px 15px ${A}30`
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+                  onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+                >
+                  <Icon d={Icons.Plus} size={16} color="#fff" />
+                  {!isMobile && "Create App"}
+                </button>
+              </div>
+            </header>
+
+            {/* New Horizontal Row of Filter Pills */}
+            <div style={{ flexShrink: 0, padding: `8px ${pad}px`, background: dk ? "rgba(8,12,24,0.4)" : "rgba(240,244,255,0.4)", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"}` }}>
+              <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", gap: 10, overflowX: "auto" }} className="hide-scroll">
+                {["Trending", "Top Free", "Top Paid", "Most Popular"].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setActiveDiscovery(f)}
+                    style={{
+                      padding: "6px 14px", borderRadius: 99, fontSize: 11, fontWeight: 700,
+                      cursor: "pointer", border: "1px solid transparent", transition: "all 0.2s",
+                      background: activeDiscovery === f ? dk ? "rgba(255,255,255,0.1)" : "rgba(59,130,246,0.1)" : "transparent",
+                      color: activeDiscovery === f ? A : dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)",
+                      borderColor: activeDiscovery === f ? `${A}40` : "transparent"
+                    }}
+                  >
+                    {f}
+                  </button>
+                ))}
               </div>
             </div>
-            <div style={{ marginTop: 32, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 11, color: dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.5)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              <div style={{ width: 5, height: 5, borderRadius: "50%", background: A, animation: "pulseGlow 2s infinite" }} />
-              Connected to AWS OpenSearch · Bedrock Semantic Search
-              <Icon d={Icons.Wifi} size={11} color={dk ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.35)"} />
-            </div>
-          </div>
-        </main>
 
-        {/* Intent Discovery Sidebar widget (Desktop) */}
-        {!isMobile && showChat && (
-          <aside style={{
-            width: 420, flexShrink: 0,
-            borderLeft: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-            background: dk ? "rgba(2, 6, 23, 0.7)" : "rgba(255,255,255,0.7)",
-            backdropFilter: "blur(24px)", zIndex: 60,
-            display: "flex", flexDirection: "column"
-          }}>
-            <AIChatPanel onClose={() => setShowChat(false)} isDark={dk} isMobile={isMobile} />
-          </aside>
-        )}
+            {/* Category Pill Bar */}
+            <div className="hide-scroll" style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: isMobile ? 12 : 8, padding: isMobile ? `14px ${pad}px` : `12px ${pad}px`, borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.04)" : "rgba(59,130,246,0.08)"}`, background: dk ? "rgba(10,15,30,0.6)" : "rgba(234,239,255,0.6)", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 auto", maxWidth: 1600, width: "100%" }}>
+                {CATEGORIES.map(cat => (
+                  <Tooltip key={cat} text={`Filter: ${cat === "All" ? "All Types" : cat}`} position="bottom">
+                    <button className="cat-btn" onClick={() => { setActiveCategory(cat); setQuery(""); }}
+                      style={{ padding: "7px 16px", borderRadius: 99, fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 12, cursor: "pointer", flexShrink: 0, transition: "all 0.2s", background: activeCategory === cat ? A : (dk ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.85)"), color: activeCategory === cat ? "#fff" : (dk ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.75)"), border: `1px solid ${activeCategory === cat ? A : (dk ? "rgba(255,255,255,0.06)" : "rgba(59,130,246,0.2)")}` }}>
+                      {cat === "All" ? "All Types" : cat}
+                    </button>
+                  </Tooltip>
+                ))}
+                {errorMsg && <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(239,68,68,0.7)", padding: "6px 12px", borderRadius: 99, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", flexShrink: 0 }}>⚠ {errorMsg}</div>}
+                <div style={{ marginLeft: "auto", flexShrink: 0, display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: dk ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.6)" }}>
+                  <Icon d={Icons.ChevronR} size={13} />{loading ? "—" : filtered.length} result{filtered.length !== 1 ? "s" : ""}
+                </div>
+              </div>
+            </div>
+
+            {/* Bento Grid Container */}
+            <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: `24px ${pad}px` }}>
+              <div style={{ maxWidth: 1600, margin: "0 auto", width: "100%" }}>
+
+                {/* Intent Discovery Stacked on Mobile */}
+                {isMobile && showChat && (
+                  <div style={{ marginBottom: 24, borderRadius: 24, overflow: "hidden", border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, background: dk ? "rgba(10,16,32,0.6)" : "rgba(255,255,255,0.6)", backdropFilter: "blur(20px)" }}>
+                    <AIChatPanel onClose={() => setShowChat(false)} isDark={dk} isMobile={isMobile} />
+                  </div>
+                )}
+
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: width >= 1100 ? "repeat(12, 1fr)" : (width >= 768 ? "repeat(2, 1fr)" : "1fr"),
+                  gap: 20,
+                  gridAutoFlow: "dense",
+                  position: "relative",
+                  zIndex: 10
+                }}>
+                  {loading
+                    ? Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} style={{ gridColumn: width >= 1100 ? (i % 7 === 0 ? "span 6" : "span 3") : "span 1" }}>
+                        <SkeletonCard index={i} isDark={dk} />
+                      </div>
+                    ))
+                    : filtered.length === 0
+                      ? <div style={{ gridColumn: "1/-1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "60px 0" }}>
+                        <div style={{ fontSize: 36 }}>🔍</div>
+                        <div style={{ fontSize: 14, color: dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.6)" }}>No results found</div>
+                        <button onClick={() => { setQuery(""); setActiveCategory("All"); setActiveDiscovery("Trending"); }} style={{ padding: "8px 20px", borderRadius: 99, border: `1px solid ${A}55`, background: "none", color: A, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Clear filters</button>
+                      </div>
+                      : filtered.map((tool, i) => {
+                        const isFeatured = i % 7 === 0;
+                        return (
+                          <div key={tool.id} style={{
+                            gridColumn: width >= 1100 ? (isFeatured ? "span 6" : "span 3") : "span 1",
+                            cursor: "pointer"
+                          }} onClick={() => setSelectedTool(tool)}>
+                            <ToolCard tool={tool} index={i} isDark={dk} />
+                          </div>
+                        );
+                      })
+                  }
+                </div>
+              </div>
+              <div style={{ marginTop: 32, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 11, color: dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.5)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", background: A, animation: "pulseGlow 2s infinite" }} />
+                Connected to AWS OpenSearch · Bedrock Semantic Search
+                <Icon d={Icons.Wifi} size={11} color={dk ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.35)"} />
+              </div>
+            </div>
+          </main>
+
+          {/* Intent Discovery Sidebar widget (Desktop) */}
+          {!isMobile && showChat && (
+            <aside style={{
+              width: 420, flexShrink: 0,
+              borderLeft: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
+              background: dk ? "rgba(2, 6, 23, 0.7)" : "rgba(255,255,255,0.7)",
+              backdropFilter: "blur(24px)", zIndex: 60,
+              display: "flex", flexDirection: "column"
+            }}>
+              <AIChatPanel onClose={() => setShowChat(false)} isDark={dk} isMobile={isMobile} />
+            </aside>
+          )}
         </div>
 
         {/* Resource Detail Workbench Modal */}
