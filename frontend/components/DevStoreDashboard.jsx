@@ -1,8 +1,9 @@
 'use client';
 
 // Dev-Store Dashboard — Glassmorphism + Neon Accents V2.0
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import useSWR from "swr";
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import useSWR from 'swr';
+import { useSession, signIn, signOut } from "next-auth/react";
 import apiService from "@/lib/api";
 import useWindowSize from "@/components/hooks/useWindowSize";
 import Tooltip from "@/components/Tooltip";
@@ -882,8 +883,14 @@ function SettingsModal({ isDark, onClose, isHinglish, setIsHinglish, toggleTheme
 }
 
 // ─── Auth Portal ──────────────────────────────────────────────────────────────
-function AuthPortal({ isDark, onClose, onLogin }) {
+function AuthPortal({ isDark, onClose }) {
   const dk = isDark;
+  const [mode, setMode] = useState("login"); // "login" or "register"
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState(""); // Only used for register
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   // Handle Escape key
   useEffect(() => {
@@ -916,18 +923,118 @@ function AuthPortal({ isDark, onClose, onLogin }) {
         <div style={{ width: 70, height: 70, background: "rgba(59,130,246,0.1)", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
           <img src="/logo.png" style={{ width: "70%" }} alt="B" />
         </div>
-        <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>Welcome to DevStore</h1>
-        <p style={{ fontSize: 14, opacity: 0.5, marginBottom: 32 }}>Build, deploy, and scale with the world's most powerful Developer's marketplace.</p>
+        <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", marginBottom: 8 }}>
+          {mode === "login" ? "Welcome Back" : "Create Account"}
+        </h1>
+        <p style={{ fontSize: 14, opacity: 0.5, marginBottom: 24 }}>
+          {mode === "login" 
+            ? "Sign in to access your DevStore resources and API keys."
+            : "Join the world's most powerful Developer's marketplace."}
+        </p>
+
+        {error && (
+          <div style={{ padding: "10px 14px", borderRadius: 12, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)", color: "#ef4444", fontSize: 13, marginBottom: 20 }}>
+            {error}
+          </div>
+        )}
+
+        {/* Manual Auth Form */}
+        <form onSubmit={async (e) => {
+          e.preventDefault();
+          setError("");
+          setLoading(true);
+          
+          if (mode === "register") {
+            // In Mock mode, we just pretend to register and then log them in
+            setTimeout(() => {
+              signIn("credentials", { email, password, redirect: false }).then((res) => {
+                if (res?.error) setError("Registration failed (Mock Error).");
+                else onClose();
+              }).finally(() => setLoading(false));
+            }, 800);
+          } else {
+            const res = await signIn("credentials", {
+              email,
+              password,
+              redirect: false,
+            });
+            
+            if (res?.error) {
+              setError("Invalid email or password.");
+              setLoading(false);
+            } else {
+              onClose(); // Automatically close modal on success
+            }
+          }
+        }} style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+          {mode === "register" && (
+            <input
+              type="text"
+              required
+              placeholder="Full Name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              style={{ padding: "14px 18px", borderRadius: 12, background: dk ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, color: "inherit", fontSize: 14 }}
+            />
+          )}
+          <input
+            type="email"
+            required
+            placeholder="Email Address"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            style={{ padding: "14px 18px", borderRadius: 12, background: dk ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, color: "inherit", fontSize: 14 }}
+          />
+          <input
+            type="password"
+            required
+            placeholder="Password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            style={{ padding: "14px 18px", borderRadius: 12, background: dk ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.03)", border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, color: "inherit", fontSize: 14 }}
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            style={{ width: "100%", height: 50, background: "#3B82F6", color: "#fff", borderRadius: 12, border: "none", fontWeight: 700, fontSize: 15, cursor: loading ? "default" : "pointer", opacity: loading ? 0.7 : 1, marginTop: 4, transition: "background 0.2s" }}
+          >
+            {loading ? "Please wait..." : (mode === "login" ? "Sign In" : "Create Account")}
+          </button>
+        </form>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
+          <div style={{ flex: 1, height: 1, background: dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }} />
+          <div style={{ fontSize: 12, opacity: 0.5, fontWeight: 600, textTransform: "uppercase" }}>Or continue with</div>
+          <div style={{ flex: 1, height: 1, background: dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)" }} />
+        </div>
 
         <button
-          onClick={() => onLogin({ name: "Bharat Dev", avatar: "https://i.pravatar.cc/150?u=bharat" })}
-          style={{ width: "100%", height: 50, background: dk ? "#fff" : "#1a1a1a", color: dk ? "#000" : "#fff", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 16, transition: "transform 0.2s" }}
+          type="button"
+          onClick={() => signIn("github")}
+          style={{ width: "100%", height: 50, background: dk ? "#fff" : "#1a1a1a", color: dk ? "#000" : "#fff", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 12, transition: "transform 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
           onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
-          <Icon d={Icons.Github} size={20} /> Continue with GitHub
+          <Icon d={Icons.Github} size={20} /> GitHub
         </button>
 
-        <div style={{ fontSize: 13, opacity: 0.4 }}>
+        <button
+          type="button"
+          onClick={() => signIn("google")}
+          style={{ width: "100%", height: 50, background: dk ? "rgba(255,255,255,0.05)" : "#fff", color: dk ? "#fff" : "#000", borderRadius: 14, border: `1px solid ${dk ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)"}`, fontWeight: 700, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 24, transition: "transform 0.2s" }}
+          onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+          onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
+          <span style={{ fontSize: 18, fontWeight: 800 }}>G</span> Google
+        </button>
+
+        <div style={{ fontSize: 14, marginTop: 8 }}>
+          {mode === "login" ? (
+            <>Don't have an account? <button type="button" onClick={() => { setMode("register"); setError(""); }} style={{ background: "none", border: "none", color: "#3B82F6", fontWeight: 700, cursor: "pointer" }}>Sign up</button></>
+          ) : (
+            <>Already have an account? <button type="button" onClick={() => { setMode("login"); setError(""); }} style={{ background: "none", border: "none", color: "#3B82F6", fontWeight: 700, cursor: "pointer" }}>Log in</button></>
+          )}
+        </div>
+
+        <div style={{ fontSize: 12, opacity: 0.4, marginTop: 24 }}>
           By continuing, you agree to our <a href="#" style={{ color: "inherit", textDecoration: "underline" }}>Terms</a> and <a href="#" style={{ color: "inherit", textDecoration: "underline" }}>Privacy Policy</a>.
         </div>
         <button onClick={onClose} style={{ marginTop: 32, background: "none", border: "none", cursor: "pointer", fontSize: 13, opacity: 0.6, textDecoration: "underline" }}>Skip for now</button>
@@ -1176,8 +1283,7 @@ export default function DevStoreDashboard() {
   const [showSubmission, setShowSubmission] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
+  const { data: session, status } = useSession();
   const [notifySystems, setNotifySystems] = useState(true);
   const debounceRef = useRef(null);
   const ghostText = useGhostText(!focused && !query);
@@ -1385,12 +1491,28 @@ export default function DevStoreDashboard() {
                 <span className="ds-sidebar__icon-wrap"><Icon d={Icons.Settings} size={24} /></span>
                 <span className="ds-sidebar__label">Settings</span>
               </button>
-              <button className="ds-sidebar__bottom-item" onClick={() => isLoggedIn ? null : setShowAuth(true)} aria-label="Login">
-                {isLoggedIn
-                  ? <><div className="ds-topbar__user-avatar" style={{ width: 28, height: 28 }}><img src={user?.avatar} alt="" /></div> <span className="ds-sidebar__label">{user?.name}</span></>
-                  : <><span className="ds-sidebar__icon-wrap"><Icon d={Icons.Github} size={24} /></span> <span className="ds-sidebar__label">Login</span></>
-                }
-              </button>
+              {status === "authenticated" ? (
+                <button className="ds-sidebar__bottom-item" onClick={() => signOut()} aria-label="Sign Out">
+                  <div className="ds-topbar__user-avatar" style={{ width: 28, height: 28 }}>
+                    {session.user?.image ? (
+                      <img src={session.user.image} alt="Avatar" style={{ width: "100%", height: "100%", borderRadius: "50%" }} />
+                    ) : (
+                      <div style={{ width: "100%", height: "100%", borderRadius: "50%", background: A, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: "bold" }}>
+                        {session.user?.name?.charAt(0) || "U"}
+                      </div>
+                    )}
+                  </div>
+                  <span className="ds-sidebar__label" style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.2 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>{session.user?.name || "User"}</span>
+                    <span style={{ fontSize: 10, opacity: 0.6 }}>Sign Out</span>
+                  </span>
+                </button>
+              ) : (
+                <button className="ds-sidebar__bottom-item" onClick={() => setShowAuth(true)} aria-label="Login">
+                  <span className="ds-sidebar__icon-wrap"><Icon d={Icons.Github} size={24} /></span>
+                  <span className="ds-sidebar__label">Login</span>
+                </button>
+              )}
             </div>
           </aside>
         )}
@@ -1606,7 +1728,6 @@ export default function DevStoreDashboard() {
           <AuthPortal
             isDark={dk}
             onClose={() => setShowAuth(false)}
-            onLogin={(u) => { setIsLoggedIn(true); setUser(u); setShowAuth(false); }}
           />
         )}
 
