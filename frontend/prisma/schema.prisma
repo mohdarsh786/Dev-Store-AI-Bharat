@@ -1,27 +1,324 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model boilerplate_requests {
+  id             Int       @id @default(autoincrement())
+  resource_id    Int?
+  bundle_id      Int?
+  language       String?   @default("python") @db.VarChar(50)
+  framework      String?   @db.VarChar(50)
+  generated_code String?
+  ip_hash        String?   @db.VarChar(64)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  bundles        bundles?  @relation(fields: [bundle_id], references: [id], onUpdate: NoAction)
+}
+
+model bundle_resources {
+  bundle_id   Int
+  resource_id Int
+  role        String? @db.VarChar(50)
+  order_index Int?    @default(0)
+  bundles     bundles @relation(fields: [bundle_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([bundle_id, resource_id])
+}
+
+model bundles {
+  id                   Int                    @id @default(autoincrement())
+  name                 String                 @db.VarChar(255)
+  description          String?
+  use_case             String?                @db.VarChar(255)
+  graph_json           String?
+  is_featured          Boolean?               @default(false)
+  created_at           DateTime?              @default(now()) @db.Timestamp(6)
+  boilerplate_requests boilerplate_requests[]
+  bundle_resources     bundle_resources[]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model categories {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String                @db.VarChar(100)
+  slug                String                @unique @db.VarChar(100)
+  parent_id           String?               @db.Uuid
+  resource_type       String?               @db.VarChar(20)
+  display_order       Int?                  @default(0)
+  created_at          DateTime?             @default(now()) @db.Timestamp(6)
+  categories          categories?           @relation("categoriesTocategories", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  other_categories    categories[]          @relation("categoriesTocategories")
+  resource_categories resource_categories[]
+
+  @@index([parent_id], map: "idx_categories_parent")
+  @@index([slug], map: "idx_categories_slug")
+  @@index([resource_type], map: "idx_categories_type")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model health_checks {
+  id               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  resource_id      String?    @db.Uuid
+  status           String     @db.VarChar(20)
+  response_time_ms Int?
+  error_message    String?
+  checked_at       DateTime?  @default(now()) @db.Timestamp(6)
+  resources        resources? @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([checked_at(sort: Desc)], map: "idx_health_checked")
+  @@index([resource_id], map: "idx_health_resource")
+  @@index([resource_id, checked_at(sort: Desc)], map: "idx_health_resource_checked")
+  @@index([status], map: "idx_health_status")
+}
+
+model ingestion_logs {
+  id               Int       @id @default(autoincrement())
+  source           String    @db.VarChar(100)
+  status           String?   @default("pending") @db.VarChar(50)
+  records_fetched  Int?      @default(0)
+  records_inserted Int?      @default(0)
+  records_skipped  Int?      @default(0)
+  error_message    String?
+  started_at       DateTime? @db.Timestamp(6)
+  finished_at      DateTime? @db.Timestamp(6)
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ingestion_runs {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  run_id             String    @db.Uuid
+  source             String    @db.VarChar(50)
+  status             String    @db.VarChar(50)
+  started_at         DateTime  @default(now()) @db.Timestamp(6)
+  finished_at        DateTime? @db.Timestamp(6)
+  stage              String?   @db.VarChar(50)
+  fetched_count      Int       @default(0)
+  inserted_count     Int       @default(0)
+  updated_count      Int       @default(0)
+  unchanged_count    Int       @default(0)
+  failed_count       Int       @default(0)
+  embedded_count     Int       @default(0)
+  indexed_count      Int       @default(0)
+  top_failure_reason String?
+  partial_completion Boolean   @default(false)
+  progress           Json      @default("{}")
+  created_at         DateTime  @default(now()) @db.Timestamp(6)
+  updated_at         DateTime  @default(now()) @db.Timestamp(6)
+
+  @@index([run_id], map: "idx_ingestion_runs_run_id")
+  @@index([source], map: "idx_ingestion_runs_source")
+  @@index([started_at(sort: Desc)], map: "idx_ingestion_runs_started_at")
+  @@index([status], map: "idx_ingestion_runs_status")
+}
+
+model rankings_cache {
+  id         Int       @id @default(autoincrement())
+  cache_key  String    @unique @db.VarChar(255)
+  data_json  String
+  expires_at DateTime  @db.Timestamp(6)
+  created_at DateTime? @default(now()) @db.Timestamp(6)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model resource_categories {
+  resource_id String     @db.Uuid
+  category_id String     @db.Uuid
+  categories  categories @relation(fields: [category_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  resources   resources  @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([resource_id, category_id])
+  @@index([category_id], map: "idx_rc_category")
+  @@index([resource_id], map: "idx_rc_resource")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model resource_rankings {
+  resource_id            String    @db.Uuid
+  date                   DateTime  @db.Date
+  semantic_relevance_avg Float?    @default(0)
+  popularity_score       Float
+  optimization_score     Float
+  freshness_score        Float
+  final_score            Float
+  rank_position          Int?
+  created_at             DateTime? @default(now()) @db.Timestamp(6)
+  trending_score         Float?    @default(0.0)
+  category_rank          Int?
+  resources              resources @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([resource_id, date])
+  @@index([date(sort: Desc)], map: "idx_rankings_date")
+  @@index([date(sort: Desc), final_score(sort: Desc)], map: "idx_rankings_date_score")
+  @@index([rank_position], map: "idx_rankings_position")
+  @@index([final_score(sort: Desc)], map: "idx_rankings_score")
+}
+
+model resource_tags {
+  resource_id Int
+  tag_id      Int
+  tags        tags @relation(fields: [tag_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([resource_id, tag_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model resource_usage {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     String?    @db.Uuid
+  resource_id String?    @db.Uuid
+  action      String     @db.VarChar(50)
+  metadata    Json?      @default("{}")
+  created_at  DateTime?  @default(now()) @db.Timestamp(6)
+  resources   resources? @relation(fields: [resource_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users       users?     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([action], map: "idx_usage_action")
+  @@index([created_at(sort: Desc)], map: "idx_usage_created")
+  @@index([resource_id], map: "idx_usage_resource")
+  @@index([user_id], map: "idx_usage_user")
+  @@index([user_id, resource_id], map: "idx_usage_user_resource")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model resources {
+  id                         String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type                       String                @db.VarChar(20)
+  name                       String                @db.VarChar(255)
+  description                String
+  long_description           String?
+  pricing_type               String                @db.VarChar(20)
+  price_details              Json?
+  source_url                 String                @db.VarChar(500)
+  documentation_url          String?               @db.VarChar(500)
+  github_stars               Int?                  @default(0)
+  download_count             Int?                  @default(0)
+  active_users               Int?                  @default(0)
+  health_status              String?               @default("healthy") @db.VarChar(20)
+  last_health_check          DateTime?             @db.Timestamp(6)
+  created_at                 DateTime?             @default(now()) @db.Timestamp(6)
+  updated_at                 DateTime?             @default(now()) @db.Timestamp(6)
+  metadata                   Json?                 @default("{}")
+  trending_score             Float?                @default(0.0)
+  category_rank              Int?
+  boilerplate_download_count Int?                  @default(0)
+  source                     String                @default("manual") @db.VarChar(50)
+  tags                       Json                  @default("[]")
+  content_hash               String?               @db.VarChar(64)
+  embedding                  Json?
+  embedding_hash             String?               @db.VarChar(64)
+  embedding_updated_at       DateTime?             @db.Timestamp(6)
+  source_updated_at          DateTime?             @db.Timestamp(6)
+  last_ingested_at           DateTime?             @db.Timestamp(6)
+  last_indexed_at            DateTime?             @db.Timestamp(6)
+  rank_score                 Float?                @default(0.0)
+  language                   String?               @db.VarChar(100)
+  private                    Boolean?
+  gated                      Boolean?
+  health_checks              health_checks[]
+  resource_categories        resource_categories[]
+  resource_rankings          resource_rankings[]
+  resource_usage             resource_usage[]
+
+  @@unique([source, source_url], map: "idx_resources_source_url_unique")
+  @@index([boilerplate_download_count(sort: Desc)], map: "idx_resources_boilerplate_downloads")
+  @@index([type, category_rank], map: "idx_resources_category_rank")
+  @@index([content_hash], map: "idx_resources_content_hash")
+  @@index([created_at(sort: Desc)], map: "idx_resources_created_at")
+  @@index([embedding_hash], map: "idx_resources_embedding_hash")
+  @@index([health_status], map: "idx_resources_health")
+  @@index([language], map: "idx_resources_language")
+  @@index([pricing_type], map: "idx_resources_pricing")
+  @@index([private], map: "idx_resources_private")
+  @@index([rank_score(sort: Desc)], map: "idx_resources_rank_score")
+  @@index([source], map: "idx_resources_source")
+  @@index([github_stars(sort: Desc)], map: "idx_resources_stars")
+  @@index([trending_score(sort: Desc)], map: "idx_resources_trending")
+  @@index([trending_score(sort: Desc)], map: "idx_resources_trending_score")
+  @@index([type], map: "idx_resources_type")
+  @@index([updated_at(sort: Desc)], map: "idx_resources_updated")
+}
+
+model schema_migrations {
+  id         Int       @id @default(autoincrement())
+  filename   String    @unique @db.VarChar(255)
+  applied_at DateTime? @default(now()) @db.Timestamp(6)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model search_history {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String?   @db.Uuid
+  query             String
+  language          String?   @db.VarChar(10)
+  filters           Json?
+  results_count     Int?
+  clicked_resources String[]  @db.Uuid
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  users             users?    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)], map: "idx_search_created")
+  @@index([language], map: "idx_search_language")
+  @@index([user_id], map: "idx_search_user")
+}
+
+model search_logs {
+  id            Int       @id @default(autoincrement())
+  query         String    @db.VarChar(500)
+  category      String?   @db.VarChar(50)
+  price_type    String?   @db.VarChar(20)
+  results_count Int?      @default(0)
+  clicked_id    Int?
+  session_id    String?   @db.VarChar(100)
+  created_at    DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model tags {
+  id            Int             @id @default(autoincrement())
+  name          String          @unique @db.VarChar(100)
+  slug          String          @unique @db.VarChar(100)
+  usage_count   Int?            @default(0)
+  created_at    DateTime?       @default(now()) @db.Timestamp(6)
+  resource_tags resource_tags[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model users {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cognito_id         String           @unique @db.VarChar(255)
+  email              String           @unique @db.VarChar(255)
+  preferred_language String?          @default("en") @db.VarChar(10)
+  tech_stack         Json?            @default("[]")
+  preferences        Json?            @default("{}")
+  created_at         DateTime?        @default(now()) @db.Timestamp(6)
+  last_login         DateTime?        @db.Timestamp(6)
+  resource_usage     resource_usage[]
+  search_history     search_history[]
+
+  @@index([cognito_id], map: "idx_users_cognito")
+  @@index([email], map: "idx_users_email")
+  @@index([last_login(sort: Desc)], map: "idx_users_last_login")
 }
 
 model User {
-  id            String          @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String?
-  email         String          @unique
+  email         String    @unique
   emailVerified DateTime?
   image         String?
   accounts      Account[]
   sessions      Session[]
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Account {
