@@ -1,20 +1,21 @@
 import { NextResponse } from "next/server";
-
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+import { prisma } from "@/lib/prisma";
 
 export async function GET() {
     try {
-        const response = await fetch(`${BACKEND_URL}/api/v1/health`, {
-            next: { revalidate: 10 },
+        // Basic connectivity check to the database
+        await prisma.$queryRaw`SELECT 1`;
+        
+        return NextResponse.json({ 
+            status: "online", 
+            service: "devstore-api-v2",
+            database: "connected"
         });
-
-        if (!response.ok) {
-            return NextResponse.json({ status: "offline" }, { status: 503 });
-        }
-
-        const data = await response.json();
-        return NextResponse.json({ status: "online", ...data });
-    } catch {
-        return NextResponse.json({ status: "offline" }, { status: 503 });
+    } catch (error) {
+        console.error("[API/health] Error:", error);
+        return NextResponse.json({ 
+            status: "offline", 
+            database: "disconnected" 
+        }, { status: 503 });
     }
 }

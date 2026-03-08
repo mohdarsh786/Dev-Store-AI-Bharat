@@ -1,30 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+export async function POST(req: NextRequest) {
+    try {
+        const body = await req.json();
+        const { query = '' } = body;
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    
-    const response = await fetch(`${BACKEND_URL}/api/v1/rag/chat`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+        // Simplified intent logic using direct database check
+        const topMatches = await prisma.resources.findMany({
+            where: {
+                OR: [
+                    { name: { contains: query, mode: 'insensitive' } },
+                    { description: { contains: query, mode: 'insensitive' } }
+                ]
+            },
+            take: 5
+        });
 
-    if (!response.ok) {
-      throw new Error(`Backend responded with status ${response.status}`);
+        return NextResponse.json({
+            intent: "search",
+            query,
+            suggested_filters: {},
+            results: topMatches
+        });
+    } catch (error) {
+        console.error("[API/search/intent] Error:", error);
+        return NextResponse.json({ intent: "general", query: "" });
     }
-
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error("Intent search error:", error);
-    return NextResponse.json(
-      { error: "Failed to perform intent search" },
-      { status: 500 }
-    );
-  }
 }
