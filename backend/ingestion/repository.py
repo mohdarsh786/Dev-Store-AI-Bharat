@@ -433,7 +433,7 @@ class IngestionRepository:
         query = """
             SELECT 
                 id,
-                type as resource_type,
+                type as category,
                 name,
                 description,
                 source,

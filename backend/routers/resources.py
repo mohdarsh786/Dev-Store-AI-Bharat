@@ -124,9 +124,14 @@ async def search_resources(
             any(query_lower in tag.lower() for tag in r.get('tags', [])))
     ]
     
-    # Filter by category
+    # Filter by category (case-insensitive, check both 'category' and 'resource_type' fields)
     if category:
-        filtered = [r for r in filtered if r.get('category') == category]
+        category_lower = category.lower()
+        filtered = [
+            r for r in filtered 
+            if (r.get('category', '').lower() == category_lower or 
+                r.get('resource_type', '').lower() == category_lower)
+        ]
     
     # Filter by source
     if source:
@@ -159,9 +164,14 @@ async def get_trending(
     """Get trending resources"""
     all_resources = get_all_resources()
     
-    # Filter by category
+    # Filter by category (case-insensitive, check both 'category' and 'resource_type' fields)
     if category:
-        all_resources = [r for r in all_resources if r.get('category') == category]
+        category_lower = category.lower()
+        all_resources = [
+            r for r in all_resources 
+            if (r.get('category', '').lower() == category_lower or 
+                r.get('resource_type', '').lower() == category_lower)
+        ]
     
     # Sort by stars + downloads
     all_resources.sort(
@@ -183,7 +193,8 @@ async def get_categories():
     
     categories = {}
     for resource in all_resources:
-        cat = resource.get('category', 'unknown')
+        # Check both 'category' and 'resource_type' fields
+        cat = resource.get('category') or resource.get('resource_type', 'unknown')
         categories[cat] = categories.get(cat, 0) + 1
     
     return {

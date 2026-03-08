@@ -24,17 +24,15 @@ class ApiService {
         return response.json();
     }
 
-    /** Semantic search via OpenSearch + Bedrock (POST /api/search) */
+    /** Search resources by query string (GET /api/resources/search) */
     async search(query: string, filters: Record<string, unknown> = {}) {
-        return this.request<{ results: Resource[] }>("/api/search", {
-            method: "POST",
-            body: JSON.stringify({
-                query,
-                pricing_filter: filters.pricing_filter,
-                resource_types: filters.resource_types,
-                limit: filters.limit || 20,
-            }),
-        });
+        const params = new URLSearchParams();
+        params.append("q", query);
+        if (filters.resource_types && Array.isArray(filters.resource_types) && filters.resource_types.length > 0) {
+            params.append("category", filters.resource_types[0]); // Backend uses 'category' parameter
+        }
+        if (filters.limit) params.append("limit", String(filters.limit));
+        return this.request<{ results: Resource[] }>(`/api/resources?${params}`);
     }
 
     /** AI Intent search using Bedrock embeddings + k-NN (POST /api/search/intent) */
@@ -68,8 +66,9 @@ class ApiService {
     /** Get trending resources sorted by Unified Ranking Algorithm (GET /api/trending) */
     async getTrending(filters: TrendingFilters = {}) {
         const params = new URLSearchParams();
+        // Backend uses 'category' parameter, not 'resource_type'
         if (filters.resource_type && filters.resource_type !== "All")
-            params.append("resource_type", filters.resource_type);
+            params.append("category", filters.resource_type);
         if (filters.limit) params.append("limit", String(filters.limit));
         if (filters.pricing_type) params.append("pricing_type", filters.pricing_type);
         if (filters.sort) params.append("sort", filters.sort);
