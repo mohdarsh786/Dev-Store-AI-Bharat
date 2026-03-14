@@ -27,13 +27,14 @@ class RunTracker:
         """
         self.db = db_client
     
-    def create_run(self, run_id: str, sources: list) -> str:
+    def create_run(self, run_id: str, sources, status: str = "running") -> str:
         """
         Create new ingestion run record
         
         Args:
             run_id: Unique run identifier
-            sources: List of enabled sources
+            sources: List of enabled sources or a single source name
+            status: Initial run status
             
         Returns:
             Run ID
@@ -49,9 +50,12 @@ class RunTracker:
         """
         
         import json
+        if isinstance(sources, str):
+            sources = [sources]
+
         result = self.db.execute(
             query,
-            (run_id, json.dumps(sources), 'running')
+            (run_id, json.dumps(sources), status)
         )
         
         return result['run_id']
@@ -187,3 +191,34 @@ class RunTracker:
                 LIMIT %s
             """
             return self.db.fetch_all(query, (limit,))
+
+    def update_run(
+        self,
+        run_id: str,
+        source=None,
+        status: Optional[str] = None,
+        counters: Optional[Dict[str, int]] = None,
+        top_failure_reason: Optional[str] = None,
+        finished: bool = False,
+    ):
+        """
+        Backward-compatible wrapper used by the pipeline/tests.
+        """
+        if counters:
+            normalized_stats = {
+                "fetched_count": counters.get("fetched_count", 0),
+                "inserted_count": counters.get("inserted_count", 0),
+                "updated_count": counters.get("updated_count", 0),
+                "failed_count": counters.get("failed_count", 0),
+                "skipped_count": counters.get("skipped_count", 0),
+            }
+            self.update_run_stats(run_id, normalized_stats)
+
+        if status is not None:
+            normalized_status = status.value if hasattr(status, "value") else status
+            if finished and normalized_status == "success":
+                normalized_status = "completed"
+            elif finished and normalized_status == "failed":
+                normalized_status = "failed"
+
+            self.update_run_status(run_id, normalized_status, top_failure_reason)

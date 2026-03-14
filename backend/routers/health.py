@@ -7,13 +7,20 @@ import time
 
 from fastapi import APIRouter, Request
 
-from clients.bedrock import BedrockClient
-from clients.database import DatabaseClient
-from clients.opensearch import OpenSearchClient
-from clients.redis_client import RedisClient
-from ingestion.repository import IngestionRepository
-
 router = APIRouter()
+
+
+async def _get_redis(req: Request):
+    redis_client = getattr(req.app.state, "redis", None)
+    if redis_client is not None:
+        return redis_client
+
+    from clients.redis_client import RedisClient
+
+    redis_client = RedisClient()
+    await redis_client.connect()
+    req.app.state.redis = redis_client
+    return redis_client
 
 
 @router.get("/health")
@@ -49,7 +56,11 @@ async def detailed_health_check(req: Request):
         checks["opensearch_error"] = str(e)
 
     try:
-        bedrock_client = getattr(req.app.state, "bedrock", None) or BedrockClient()
+        bedrock_client = getattr(req.app.state, "bedrock", None)
+        if bedrock_client is None:
+            from clients.bedrock import BedrockClient
+
+            bedrock_client = BedrockClient()
         checks["bedrock"] = bedrock_client.health_check()
     except Exception as e:
         checks["bedrock"] = False
@@ -105,6 +116,8 @@ async def flush_cache(req: Request):
 
 @router.get("/ingestion/status/latest")
 async def latest_ingestion_status(source: str | None = None):
+    from ingestion.repository import IngestionRepository
+
     repository = IngestionRepository()
     return {
         "timestamp": datetime.utcnow().isoformat(),

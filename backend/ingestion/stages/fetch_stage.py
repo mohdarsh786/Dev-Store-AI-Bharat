@@ -18,11 +18,19 @@ class FetchStage:
 
     def __init__(self):
         self.fetchers = {
-            "github": GitHubFetcher(),
-            "huggingface": HuggingFaceFetcher(),
-            "kaggle": KaggleFetcher(),
-            "openrouter": OpenRouterFetcher(),
+            "github": self._build_fetcher("github", GitHubFetcher),
+            "huggingface": self._build_fetcher("huggingface", HuggingFaceFetcher),
+            "kaggle": self._build_fetcher("kaggle", KaggleFetcher),
+            "openrouter": self._build_fetcher("openrouter", OpenRouterFetcher),
         }
+
+    @staticmethod
+    def _build_fetcher(source: str, factory):
+        try:
+            return factory()
+        except Exception as exc:
+            logger.warning("Skipping %s fetcher initialization: %s", source, exc)
+            return None
 
     def execute(self, sources: List[str]) -> Dict[str, Any]:
         """
@@ -49,6 +57,8 @@ class FetchStage:
             try:
                 logger.info(f"Fetching from {source}...")
                 fetcher = self.fetchers[source]
+                if fetcher is None:
+                    raise RuntimeError(f"{source} fetcher is unavailable")
 
                 if source == "github":
                     repos = fetcher.fetch_and_normalize_all()

@@ -3,8 +3,8 @@ Resources API Router
 
 Serves resources from PostgreSQL database or falls back to JSON files
 """
-from fastapi import APIRouter, Query, HTTPException
-from typing import List, Optional
+from fastapi import APIRouter, Query
+from typing import Optional
 import json
 import os
 import logging
@@ -267,9 +267,9 @@ async def refresh_cache():
     _github_cache = None
     
     # Reload
-    get_models()
-    get_hf_datasets()
-    get_kaggle_datasets()
-    get_github_repos()
+    get_models_from_json()
+    get_hf_datasets_from_json()
+    get_kaggle_datasets_from_json()
+    get_github_repos_from_json()
     
     return {"message": "Cache refreshed successfully"}

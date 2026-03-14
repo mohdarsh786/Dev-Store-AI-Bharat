@@ -50,10 +50,14 @@ class IngestionPipeline:
 
     def __init__(
         self,
-        db_client: DatabaseClient,
-        bedrock_client: BedrockClient,
-        opensearch_client: OpenSearchClient,
-        redis_client: RedisClient,
+        db_client: Optional[DatabaseClient] = None,
+        bedrock_client: Optional[BedrockClient] = None,
+        opensearch_client: Optional[OpenSearchClient] = None,
+        redis_client: Optional[RedisClient] = None,
+        db: Optional[DatabaseClient] = None,
+        bedrock: Optional[BedrockClient] = None,
+        opensearch: Optional[OpenSearchClient] = None,
+        redis: Optional[RedisClient] = None,
         run_id: Optional[str] = None,
     ):
         self.run_id = run_id or str(uuid.uuid4())
@@ -61,15 +65,18 @@ class IngestionPipeline:
         self.finished_at = None
 
         # Clients
-        self.db = db_client
-        self.bedrock = bedrock_client
-        self.opensearch = opensearch_client
-        self.redis = redis_client
+        self.db = db_client or db
+        self.bedrock = bedrock_client or bedrock
+        self.opensearch = opensearch_client or opensearch
+        self.redis = redis_client or redis
+
+        if not all([self.db, self.bedrock, self.opensearch, self.redis]):
+            raise ValueError("IngestionPipeline requires database, bedrock, opensearch, and redis clients")
 
         # Services
-        self.repository = IngestionRepository(db_client)
-        self.lock_service = LockService(redis_client)
-        self.run_tracker = RunTracker(db_client)
+        self.repository = IngestionRepository(self.db)
+        self.lock_service = LockService(self.redis)
+        self.run_tracker = RunTracker(self.db)
         self.snapshot_store = SnapshotStore()
 
         # Stages
@@ -77,10 +84,10 @@ class IngestionPipeline:
         self.normalize_stage = NormalizeStage()
         self.dedupe_stage = DedupeStage()
         self.upsert_stage = UpsertStage(self.repository)
-        self.embedding_stage = EmbeddingStage(bedrock_client, redis_client, self.repository)
-        self.indexing_stage = IndexingStage(opensearch_client, self.repository)
+        self.embedding_stage = EmbeddingStage(self.bedrock, self.redis, self.repository)
+        self.indexing_stage = IndexingStage(self.opensearch, self.repository)
         self.ranking_stage = RankingStage(self.repository)
-        self.cache_stage = CacheStage(redis_client)
+        self.cache_stage = CacheStage(self.redis)
 
         # State
         self.lock_token = None

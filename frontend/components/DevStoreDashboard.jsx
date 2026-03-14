@@ -1,7 +1,7 @@
 'use client';
 
 // Dev-Store Dashboard — Glassmorphism + Neon Accents V2.0
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { useSession, signIn, signOut } from "next-auth/react";
 import apiService from "@/lib/api";
@@ -196,13 +196,13 @@ function mapResource(r, index = 0, contextualRank = null) {
 
 // ─── Ghost-text hook ──────────────────────────────────────────────────────────
 function useGhostText(active) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(active ? GHOST_TEXTS[0] : "");
   const idx = useRef(0);
   const chars = useRef(0);
   const phase = useRef("typing");
 
   useEffect(() => {
-    if (!active) { setText(""); return; }
+    if (!active) return undefined;
     let raf;
     let last = 0;
     const SPEEDS = { typing: 46, erasing: 22, pause: 2000, gap: 350 };
@@ -234,7 +234,7 @@ function useGhostText(active) {
     return () => cancelAnimationFrame(raf);
   }, [active]);
 
-  return text;
+  return active ? text : "";
 }
 
 // ─── ToolCard ─────────────────────────────────────────────────────────────────
@@ -796,47 +796,6 @@ function ResourceWorkbench({ tool, onClose, isDark }) {
 
 
 // ─── Nav Item ─────────────────────────────────────────────────────────────────
-function NavItem({ iconKey, label, active, onClick, isDark = true }) {
-  const [hov, setHov] = useState(false);
-  const dk = isDark;
-  const ac = "#3B82F6"; const al = "#60A5FA";
-  const needsPulse = ["APIs", "Models", "Data"].includes(label);
-
-  return (
-    <button
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        width: "100%", background: active ? `${ac}22` : hov ? (dk ? "rgba(255,255,255,0.04)" : "rgba(59,130,246,0.06)") : "transparent",
-        border: "none", borderRadius: 16, padding: "12px 8px", cursor: "pointer",
-        display: "flex", flexDirection: "column", alignItems: "center", gap: 6,
-        position: "relative", transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-      }}
-      className={active && needsPulse ? "neon-active" : ""}
-    >
-      {active && (
-        <div style={{
-          position: "absolute", left: -12, top: "50%", transform: "translateY(-50%)",
-          width: 3, height: 28, background: ac, borderRadius: "0 3px 3px 0",
-          boxShadow: `0 0 10px ${ac}`
-        }} />
-      )}
-      <Icon
-        d={Icons[iconKey]} size={18}
-        color={active ? al : hov ? (dk ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.8)") : (dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.6)")}
-      />
-      <span style={{
-        fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em",
-        color: active ? al : (dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.7)"),
-        textTransform: "uppercase", fontFamily: "'DM Sans', sans-serif",
-      }}>
-        {label}
-      </span>
-    </button>
-  );
-}
-
 // ─── Settings Modal ───────────────────────────────────────────────────────────
 function SettingsModal({ isDark, onClose, isHinglish, setIsHinglish, toggleTheme, notifySystems, setNotifySystems }) {
   const dk = isDark;
@@ -1028,7 +987,7 @@ function AuthPortal({ isDark, onClose }) {
 
         <div style={{ fontSize: 14, marginTop: 8 }}>
           {mode === "login" ? (
-            <>Don't have an account? <button type="button" onClick={() => { setMode("register"); setError(""); }} style={{ background: "none", border: "none", color: "#3B82F6", fontWeight: 700, cursor: "pointer" }}>Sign up</button></>
+            <>Don&apos;t have an account? <button type="button" onClick={() => { setMode("register"); setError(""); }} style={{ background: "none", border: "none", color: "#3B82F6", fontWeight: 700, cursor: "pointer" }}>Sign up</button></>
           ) : (
             <>Already have an account? <button type="button" onClick={() => { setMode("login"); setError(""); }} style={{ background: "none", border: "none", color: "#3B82F6", fontWeight: 700, cursor: "pointer" }}>Log in</button></>
           )}
@@ -1263,7 +1222,7 @@ function AIChatPanel({ onClose, isDark = true, isMobile = false }) {
 
 // ─── Main DevStore Dashboard ──────────────────────────────────────────────────
 export default function DevStoreDashboard() {
-  const [tools, setTools] = useState([]);
+  const [tools, setTools] = useState(() => MOCK_TOOLS.map((r, idx) => mapResource(r, idx, idx + 1)));
   const [filtered, setFiltered] = useState([]);
   const [query, setQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
@@ -1307,12 +1266,11 @@ export default function DevStoreDashboard() {
   // Sync data-theme on mount
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
-  }, []);
+  }, [isDark]);
 
   // Responsive
   const { width } = useWindowSize();
   const isMobile = width < 768;
-  const gridCols = width >= 1200 ? 4 : width >= 1024 ? 3 : width >= 768 ? 2 : 1;
   const pad = isMobile ? 16 : 32;
 
   // SWR-based trending fetcher
@@ -1350,6 +1308,7 @@ export default function DevStoreDashboard() {
       if (isTopChart) {
         results = results.sort((a, b) => (a.rank || 999) - (b.rank || 999));
       }
+      setTools(results);
       setFiltered(results);
       setLoading(false);
     } else if (!query && trendingError) {
@@ -1373,6 +1332,7 @@ export default function DevStoreDashboard() {
       sortedMocks = sortedMocks.map((r, idx) => ({ ...r, rank: idx + 1 }));
 
       if (isTopChart) sortedMocks.sort((a, b) => a.rank - b.rank);
+      setTools(sortedMocks);
       setFiltered(sortedMocks);
       setLoading(false);
     }
