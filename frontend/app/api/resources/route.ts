@@ -1,40 +1,59 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
         const q = searchParams.get('q') || '';
         const category = searchParams.get('category') || '';
-        const limit = searchParams.get('limit') || '20';
-        const offset = searchParams.get('offset') || '0';
+        const limit = parseInt(searchParams.get('limit') || '20');
+        const offset = parseInt(searchParams.get('offset') || '0');
         
-        // Use the correct backend endpoint
-        let url = `${BACKEND_URL}/api/resources/search?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`;
-        if (category) {
-            url += `&category=${encodeURIComponent(category)}`;
-        }
-
-        const response = await fetch(url, {
-            headers: { "Content-Type": "application/json" },
-            next: { revalidate: 30 }, // ISR: cache for 30s
+        // Direct Prisma search
+        const resources = await prisma.resources.findMany({
+            where: {
+                AND: [
+                    q ? {
+                        OR: [
+                            { name: { contains: q, mode: 'insensitive' } },
+                            { description: { contains: q, mode: 'insensitive' } }
+                        ]
+                    } : {},
+                    category ? { type: { contains: category, mode: 'insensitive' } } : {}
+                ]
+            },
+            orderBy: {
+                github_stars: 'desc'
+            },
+            take: limit,
+            skip: offset
         });
 
-        if (!response.ok) {
-            return NextResponse.json(
-                { error: `Backend error: ${response.status}` },
-                { status: response.status }
-            );
-        }
+        const total = await prisma.resources.count({
+            where: {
+                AND: [
+                    q ? {
+                        OR: [
+                            { name: { contains: q, mode: 'insensitive' } },
+                            { description: { contains: q, mode: 'insensitive' } }
+                        ]
+                    } : {},
+                    category ? { type: { contains: category, mode: 'insensitive' } } : {}
+                ]
+            }
+        });
 
-        const data = await response.json();
-        return NextResponse.json(data);
+        return NextResponse.json({
+            resources,
+            total,
+            limit,
+            offset
+        });
     } catch (error) {
         console.error("[API/resources] Error:", error);
         return NextResponse.json(
-            { error: "Backend unreachable" },
-            { status: 503 }
+            { error: "Database query failed" },
+            { status: 500 }
         );
     }
 }

@@ -1,30 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const response = await fetch(`${BACKEND_URL}/api/v1/search`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
+        const { query = '' } = body;
+        
+        // Direct Prisma keyword search for parity with simple keyword backend
+        const resources = await prisma.resources.findMany({
+            where: {
+                OR: [
+                    { name: { contains: query, mode: 'insensitive' } },
+                    { description: { contains: query, mode: 'insensitive' } }
+                ]
+            },
+            take: 20
         });
 
-        if (!response.ok) {
-            return NextResponse.json(
-                { error: `Backend error: ${response.status}` },
-                { status: response.status }
-            );
-        }
-
-        const data = await response.json();
-        return NextResponse.json(data);
+        return NextResponse.json({
+            resources
+        });
     } catch (error) {
         console.error("[API/search] Error:", error);
         return NextResponse.json(
-            { error: "Backend unreachable" },
-            { status: 503 }
+            { error: "Database search failed" },
+            { status: 500 }
         );
     }
 }

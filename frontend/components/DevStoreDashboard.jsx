@@ -2,8 +2,13 @@
 
 // Dev-Store Dashboard — Glassmorphism + Neon Accents V2.0
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import useSWR from 'swr';
 import { useSession, signIn, signOut } from "next-auth/react";
+import { FaBrain, FaDatabase, FaNetworkWired, FaRobot, FaGoogle, FaGithub } from "react-icons/fa";
+import { MdHome } from "react-icons/md";
+import { IoLogIn } from "react-icons/io5";
 import apiService from "@/lib/api";
 import useWindowSize from "@/components/hooks/useWindowSize";
 import Tooltip from "@/components/Tooltip";
@@ -108,10 +113,9 @@ function mapResource(r, index = 0, contextualRank = null) {
     if (lower === "dataset") return "Dataset";
     return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
   };
-  
   const resourceType = normalizeType(r.category || r.resource_type || r.type);
   const meta = TYPE_META[resourceType] || { color: "#6B7280", emoji: "📦" };
-  
+
   // Detect source from URL if not provided
   const detectSource = (url) => {
     if (!url) return 'github';
@@ -120,14 +124,14 @@ function mapResource(r, index = 0, contextualRank = null) {
     if (url.includes('kaggle.com')) return 'kaggle';
     return 'github';
   };
-  
+
   const source = r.source || detectSource(r.source_url);
   const sourceMeta = SOURCE_META[source] || SOURCE_META.github;
-  
+
   // Separate stars and downloads (don't conflate)
   const stars = r.github_stars || r.stars || 0;
   const downloads = r.downloads || r.download_count || 0;
-  
+
   const latencyRaw = parseFloat(r.latency_ms ?? r.p99_latency ?? 0);
   const latency = latencyRaw > 0 ? latencyRaw : Math.floor(Math.random() * 80 + 10);
 
@@ -293,8 +297,8 @@ function ToolCard({ tool, index, isDark = true }) {
       }} />
 
       {/* Header row */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0, flex: 1 }}>
           <div style={{
             width: 44, height: 44, borderRadius: 14, flexShrink: 0,
             background: `${tool.accentColor}15`,
@@ -306,7 +310,7 @@ function ToolCard({ tool, index, isDark = true }) {
           }}>
             {tool.iconEmoji}
           </div>
-          <div>
+          <div style={{ minWidth: 0, flex: 1 }}>
             {tool.rank > 0 && tool.rank <= 10 && (
               <div style={{
                 fontFamily: "'JetBrains Mono', monospace", fontSize: 10, fontWeight: 700,
@@ -317,7 +321,7 @@ function ToolCard({ tool, index, isDark = true }) {
                 #{tool.rank} IN {tool.category}S
               </div>
             )}
-            <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: 15, color: dk ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.95)", letterSpacing: "-0.02em" }}>
+            <div style={{ fontFamily: "'DM Sans', sans-serif", fontWeight: 700, fontSize: 15, color: dk ? "rgba(255,255,255,0.92)" : "rgba(0,0,0,0.95)", letterSpacing: "-0.02em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {tool.name}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
@@ -337,24 +341,32 @@ function ToolCard({ tool, index, isDark = true }) {
           </div>
         </div>
 
-        {/* Status pill */}
+        {/* Status pill - More compact and overflow-safe */}
         <div style={{
-          display: "flex", alignItems: "center", gap: 5,
-          padding: "4px 10px", borderRadius: 99, flexShrink: 0,
-          background: tool.status === "stable" ? "rgba(0,255,163,0.08)" : "rgba(239,68,68,0.08)",
-          border: `1px solid ${tool.status === "stable" ? "rgba(0,255,163,0.2)" : "rgba(239,68,68,0.2)"}`,
+          display: "flex", alignItems: "center", gap: 4,
+          padding: "2px 6px", borderRadius: 99, flexShrink: 0,
+          background: (tool.status === "stable" || tool.status === "healthy") ? "rgba(0,255,163,0.08)" : "rgba(239,68,68,0.08)",
+          border: `1px solid ${(tool.status === "stable" || tool.status === "healthy") ? "rgba(0,255,163,0.2)" : "rgba(239,68,68,0.2)"}`,
+          minWidth: "fit-content",
+          maxWidth: "80px",
+          overflow: "hidden"
         }}>
           <div style={{
-            width: 6, height: 6, borderRadius: "50%",
-            background: tool.status === "stable" ? "#00FFA3" : "#ef4444",
-            boxShadow: tool.status === "stable" ? "0 0 6px #00FFA3" : "0 0 6px #ef4444",
-            animation: tool.status === "stable" ? "pulseGlow 2s infinite" : "none",
+            width: 4, height: 4, borderRadius: "50%",
+            background: (tool.status === "stable" || tool.status === "healthy") ? "#00FFA3" : "#ef4444",
+            boxShadow: (tool.status === "stable" || tool.status === "healthy") ? "0 0 4px #00FFA3" : "0 0 4px #ef4444",
+            animation: (tool.status === "stable" || tool.status === "healthy") ? "pulseGlow 2s infinite" : "none",
+            flexShrink: 0
           }} />
           <span style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
-            color: tool.status === "stable" ? "#00FFA3" : "#ef4444",
+            fontSize: 8, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase",
+            color: (tool.status === "stable" || tool.status === "healthy") ? "#00FFA3" : "#ef4444",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            maxWidth: "50px"
           }}>
-            {tool.status}
+            {tool.status === "healthy" ? "OK" : tool.status}
           </span>
         </div>
       </div>
@@ -802,6 +814,17 @@ function NavItem({ iconKey, label, active, onClick, isDark = true }) {
   const ac = "#3B82F6"; const al = "#60A5FA";
   const needsPulse = ["APIs", "Models", "Data"].includes(label);
 
+  // Map iconKey to React Icons
+  const getReactIcon = (key) => {
+    switch(key) {
+      case "Home": return <MdHome size={18} />;
+      case "Cpu": return <FaNetworkWired size={18} />;
+      case "Brain": return <FaBrain size={18} />;
+      case "Database": return <FaDatabase size={18} />;
+      default: return <Icon d={Icons[key]} size={18} />;
+    }
+  };
+
   return (
     <button
       onClick={onClick}
@@ -822,10 +845,9 @@ function NavItem({ iconKey, label, active, onClick, isDark = true }) {
           boxShadow: `0 0 10px ${ac}`
         }} />
       )}
-      <Icon
-        d={Icons[iconKey]} size={18}
-        color={active ? al : hov ? (dk ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.8)") : (dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.6)")}
-      />
+      <div style={{ color: active ? al : hov ? (dk ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.8)") : (dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.6)") }}>
+        {getReactIcon(iconKey)}
+      </div>
       <span style={{
         fontSize: 9.5, fontWeight: 700, letterSpacing: "0.08em",
         color: active ? al : (dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.7)"),
@@ -903,21 +925,30 @@ function AuthPortal({ isDark, onClose }) {
 
   return (
     <div
-      style={{ position: "fixed", inset: 0, zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)", animation: "fadeIn 0.2s ease" }}
+      className="auth-modal-wrapper"
+      style={{ position: "fixed", inset: 0, zIndex: 2000, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)", animation: "fadeIn 0.2s ease", padding: "20px", overflowY: "auto" }}
       onClick={onClose}
     >
       <div
-        style={{ position: "relative", width: 440, background: dk ? "rgba(10, 16, 30, 0.85)" : "rgba(255,255,255,0.85)", backdropFilter: "blur(20px)", borderRadius: 32, border: `1px solid ${dk ? "rgba(255,255,255,0.12)" : "rgba(59,130,246,0.15)"}`, padding: 48, textAlign: "center", boxShadow: "0 40px 100px rgba(0,0,0,0.5)" }}
+        className="auth-modal-content"
+        style={{ position: "relative", width: "100%", maxWidth: 440, maxHeight: "90vh", overflowY: "auto", background: dk ? "rgba(10, 16, 30, 0.95)" : "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)", borderRadius: 32, border: `1px solid ${dk ? "rgba(255,255,255,0.12)" : "rgba(59,130,246,0.15)"}`, padding: "32px 48px 48px", textAlign: "center", boxShadow: "0 40px 100px rgba(0,0,0,0.5)", margin: "auto" }}
         onClick={e => e.stopPropagation()}
       >
-        {/* 'X' Close Button */}
+        {/* 'X' Close Button - Always visible at top */}
         <button
+          className="auth-modal-close-btn"
           onClick={onClose}
-          style={{ position: "absolute", top: 24, right: 24, background: "none", border: "none", cursor: "pointer", color: dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", transition: "color 0.2s" }}
-          onMouseEnter={e => e.currentTarget.style.color = dk ? "#fff" : "#000"}
-          onMouseLeave={e => e.currentTarget.style.color = dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)"}
+          style={{ position: "sticky", top: 0, right: 16, background: dk ? "rgba(0,0,0,0.8)" : "rgba(255,255,255,0.9)", border: "none", cursor: "pointer", color: dk ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.9)", display: "flex", alignItems: "center", justifyContent: "center", transition: "all 0.2s", zIndex: 10, width: 36, height: 36, borderRadius: 12, backdropFilter: "blur(8px)", boxShadow: "0 2px 8px rgba(0,0,0,0.2)", marginLeft: "auto", marginBottom: 16 }}
+          onMouseEnter={e => {
+            e.currentTarget.style.color = dk ? "#fff" : "#000";
+            e.currentTarget.style.background = dk ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,1)";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.color = dk ? "rgba(255,255,255,0.9)" : "rgba(0,0,0,0.9)";
+            e.currentTarget.style.background = dk ? "rgba(0,0,0,0.8)" : "rgba(255,255,255,0.9)";
+          }}
         >
-          <Icon d={Icons.X} size={20} />
+          <Icon d={Icons.X} size={18} />
         </button>
 
         <div style={{ width: 70, height: 70, background: "rgba(59,130,246,0.1)", borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 24px" }}>
@@ -927,7 +958,7 @@ function AuthPortal({ isDark, onClose }) {
           {mode === "login" ? "Welcome Back" : "Create Account"}
         </h1>
         <p style={{ fontSize: 14, opacity: 0.5, marginBottom: 24 }}>
-          {mode === "login" 
+          {mode === "login"
             ? "Sign in to access your DevStore resources and API keys."
             : "Join the world's most powerful Developer's marketplace."}
         </p>
@@ -943,7 +974,7 @@ function AuthPortal({ isDark, onClose }) {
           e.preventDefault();
           setError("");
           setLoading(true);
-          
+
           if (mode === "register") {
             // In Mock mode, we just pretend to register and then log them in
             setTimeout(() => {
@@ -958,7 +989,7 @@ function AuthPortal({ isDark, onClose }) {
               password,
               redirect: false,
             });
-            
+
             if (res?.error) {
               setError("Invalid email or password.");
               setLoading(false);
@@ -1014,7 +1045,7 @@ function AuthPortal({ isDark, onClose }) {
           style={{ width: "100%", height: 50, background: dk ? "#fff" : "#1a1a1a", color: dk ? "#000" : "#fff", borderRadius: 14, border: "none", fontWeight: 700, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 12, transition: "transform 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
           onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
-          <Icon d={Icons.Github} size={20} /> GitHub
+          <FaGithub size={20} /> GitHub
         </button>
 
         <button
@@ -1023,7 +1054,7 @@ function AuthPortal({ isDark, onClose }) {
           style={{ width: "100%", height: 50, background: dk ? "rgba(255,255,255,0.05)" : "#fff", color: dk ? "#fff" : "#000", borderRadius: 14, border: `1px solid ${dk ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.2)"}`, fontWeight: 700, fontSize: 15, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 24, transition: "transform 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
           onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
-          <span style={{ fontSize: 18, fontWeight: 800 }}>G</span> Google
+          <FaGoogle size={18} color="#4285F4" /> Google
         </button>
 
         <div style={{ fontSize: 14, marginTop: 8 }}>
@@ -1139,7 +1170,7 @@ function ResourceSubmissionModal({ isDark, onClose }) {
 function AIChatPanel({ onClose, isDark = true, isMobile = false }) {
   const dk = isDark;
   const [messages, setMessages] = useState([
-    { type: "ai", content: "Namaste! I'm powered by AWS Bedrock. Ask me for recommendations — \"best free NLP model\", \"low-latency image API\", etc." },
+    { type: "ai", content: "**Namaste!** 🙏 I'm powered by **AWS Bedrock**. Ask me for recommendations:\n\n• *\"best free NLP model\"*\n• *\"low-latency image API\"*\n• *\"trending ML datasets\"*\n\nI can help you discover the perfect tools for your project!" },
   ]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
@@ -1158,7 +1189,7 @@ function AIChatPanel({ onClose, isDark = true, isMobile = false }) {
     try {
       // Use RAG chat endpoint instead of regular search
       const resp = await apiService.ragChat(q, "default", {});
-      
+
       // Display the AI answer
       setMessages(prev => [
         ...prev,
@@ -1177,14 +1208,14 @@ function AIChatPanel({ onClose, isDark = true, isMobile = false }) {
 
   return (
     <div style={{
-      width: "100%", height: "100%",
+      width: "100%", height: isMobile ? "400px" : "100%",
       display: "flex", flexDirection: "column",
       fontSize: isMobile ? 14 : 13,
     }}>
       {/* Header */}
       <div style={{ padding: "20px", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`, display: "flex", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg, #A855F7, #3B82F6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <Icon d={Icons.Brain} size={18} color="white" />
+        <div style={{ width: 36, height: 36, borderRadius: 10, background: dk ? "rgba(59,130,246,0.1)" : "rgba(59,130,246,0.08)", border: `1px solid ${dk ? "rgba(59,130,246,0.2)" : "rgba(59,130,246,0.15)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <FaRobot size={18} color="var(--ds-primary)" />
         </div>
         <div>
           <div style={{ fontWeight: 700, fontSize: 14, color: dk ? "#fff" : "#000" }}>Intent Discovery</div>
@@ -1197,16 +1228,74 @@ function AIChatPanel({ onClose, isDark = true, isMobile = false }) {
       </div>
 
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="ds-chat-messages" style={{ flex: 1, overflowY: "auto", padding: "16px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
         {messages.map((m, i) => (
           <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: m.type === "user" ? "flex-end" : "flex-start" }}>
-            <div style={{
+            <div className="ds-chat-message" style={{
               maxWidth: "85%", padding: "10px 14px", borderRadius: m.type === "user" ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
               background: m.type === "user" ? "rgba(59,130,246,0.25)" : (dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"),
               border: `1px solid ${m.type === "user" ? "rgba(59,130,246,0.3)" : (dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)")}`,
               fontSize: 13, color: dk ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.8)", lineHeight: 1.55,
             }}>
-              {m.content}
+              {m.type === "ai" ? (
+                <ReactMarkdown 
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    p: ({children}) => <p style={{margin: '0 0 8px 0'}}>{children}</p>,
+                    h1: ({children}) => <h1 style={{fontSize: '16px', fontWeight: 'bold', margin: '0 0 8px 0', color: dk ? '#fff' : '#000'}}>{children}</h1>,
+                    h2: ({children}) => <h2 style={{fontSize: '15px', fontWeight: 'bold', margin: '0 0 6px 0', color: dk ? '#fff' : '#000'}}>{children}</h2>,
+                    h3: ({children}) => <h3 style={{fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0', color: dk ? '#fff' : '#000'}}>{children}</h3>,
+                    code: ({children, className}) => {
+                      const isInline = !className;
+                      return isInline ? (
+                        <code style={{
+                          background: dk ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                          padding: '2px 4px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontFamily: 'monospace'
+                        }}>{children}</code>
+                      ) : (
+                        <pre style={{
+                          background: dk ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          fontFamily: 'monospace',
+                          overflow: 'auto',
+                          margin: '4px 0'
+                        }}>
+                          <code>{children}</code>
+                        </pre>
+                      );
+                    },
+                    ul: ({children}) => <ul style={{margin: '0 0 8px 0', paddingLeft: '16px'}}>{children}</ul>,
+                    ol: ({children}) => <ol style={{margin: '0 0 8px 0', paddingLeft: '16px'}}>{children}</ol>,
+                    li: ({children}) => <li style={{margin: '2px 0'}}>{children}</li>,
+                    strong: ({children}) => <strong style={{fontWeight: 'bold', color: dk ? '#fff' : '#000'}}>{children}</strong>,
+                    em: ({children}) => <em style={{fontStyle: 'italic'}}>{children}</em>,
+                    blockquote: ({children}) => (
+                      <blockquote style={{
+                        borderLeft: `3px solid ${A}`,
+                        paddingLeft: '12px',
+                        margin: '8px 0',
+                        fontStyle: 'italic',
+                        opacity: 0.8
+                      }}>{children}</blockquote>
+                    ),
+                    a: ({children, href}) => (
+                      <a href={href} target="_blank" rel="noopener noreferrer" style={{
+                        color: A,
+                        textDecoration: 'underline'
+                      }}>{children}</a>
+                    )
+                  }}
+                >
+                  {m.content}
+                </ReactMarkdown>
+              ) : (
+                m.content
+              )}
             </div>
             {m.results?.map((r, j) => (
               <div key={j} style={{
@@ -1223,38 +1312,60 @@ function AIChatPanel({ onClose, isDark = true, isMobile = false }) {
           </div>
         ))}
         {thinking && (
-          <div style={{ display: "flex", gap: 4, padding: "10px 14px" }}>
-            {[0.1, 0.2, 0.3].map(d => (
-              <div key={d} style={{ width: 6, height: 6, borderRadius: "50%", background: "#00FFA3", animation: `pulseGlow 1s ${d}s infinite` }} />
-            ))}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 6, padding: "10px 14px" }}>
+            <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              {[0, 0.15, 0.3].map(d => (
+                <div key={d} style={{ width: 8, height: 8, borderRadius: "50%", background: A, animation: `pulseGlow 1.2s ${d}s infinite` }} />
+              ))}
+            </div>
+            <div style={{ fontSize: 12, color: dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.4)", fontStyle: "italic", marginLeft: 4 }}>
+              AI is thinking...
+            </div>
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
       {/* Input */}
-      <div style={{ padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", gap: 8 }}>
-        <input
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && handleSend()}
-          placeholder="Ask AI for recommendations..."
-          style={{
-            flex: 1, background: dk ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
-            border: `1px solid ${dk ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
-            borderRadius: 99, padding: "10px 16px", color: dk ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.8)", fontSize: 13,
-            fontFamily: "'DM Sans', sans-serif",
-          }}
-        />
+      <div style={{ padding: "16px", borderTop: `1px solid ${dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)"}`, display: "flex", gap: 10, alignItems: "flex-end" }}>
+        <div style={{ flex: 1, position: "relative" }}>
+          <input
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && !e.shiftKey && handleSend()}
+            placeholder="Ask AI for recommendations..."
+            style={{
+              width: "100%", background: dk ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)",
+              border: `1px solid ${dk ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}`,
+              borderRadius: 12, padding: "12px 16px", color: dk ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.8)", fontSize: 13,
+              fontFamily: "'DM Sans', sans-serif", resize: "none", minHeight: "20px", maxHeight: "100px",
+              transition: "border-color 0.2s ease",
+            }}
+            onFocus={e => e.target.style.borderColor = `${A}99`}
+            onBlur={e => e.target.style.borderColor = dk ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)"}
+          />
+        </div>
         <button
           onClick={handleSend}
+          disabled={!input.trim() || thinking}
           style={{
-            width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-            background: "linear-gradient(135deg, #006B5D, #00FFA3)",
-            border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+            background: (!input.trim() || thinking) ? (dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)") : "linear-gradient(135deg, #006B5D, #00FFA3)",
+            border: "none", cursor: (!input.trim() || thinking) ? "not-allowed" : "pointer", 
+            display: "flex", alignItems: "center", justifyContent: "center",
+            transition: "all 0.2s ease",
+            opacity: (!input.trim() || thinking) ? 0.5 : 1,
           }}
         >
-          <Icon d={Icons.Send} size={14} color="white" />
+          {thinking ? (
+            <div style={{ display: "flex", gap: 2 }}>
+              {[0, 0.1, 0.2].map(d => (
+                <div key={d} style={{ width: 3, height: 3, borderRadius: "50%", background: "white", animation: `pulseGlow 1s ${d}s infinite` }} />
+              ))}
+            </div>
+          ) : (
+            <Icon d={Icons.Send} size={16} color="white" />
+          )}
         </button>
       </div>
     </div>
@@ -1321,7 +1432,7 @@ export default function DevStoreDashboard() {
     () => {
       // Convert category to lowercase for backend API
       const categoryLower = activeCategory === "All" ? null : activeCategory.toLowerCase();
-      const filters = { resource_type: categoryLower, limit: 40 };
+      const filters = { resource_type: categoryLower, limit: 1000 }; // Increased limit to show all tools
       if (activeDiscovery === "Top Free") {
         filters.pricing_type = "free";
         filters.sort = "popularity";
@@ -1398,7 +1509,7 @@ export default function DevStoreDashboard() {
       try {
         // Convert category to lowercase for backend API
         const categoryLower = activeCategory === "All" ? null : activeCategory.toLowerCase();
-        const resp = await apiService.search(query, { resource_types: categoryLower ? [categoryLower] : null, limit: 40 });
+        const resp = await apiService.search(query, { resource_types: categoryLower ? [categoryLower] : null, limit: 1000 }); // Increased limit to show all results
         // Map with contextual ranks for search results
         const mappedResults = (resp.results || []).map((r, idx) => mapResource(r, idx, idx + 1));
         setFiltered(mappedResults);
@@ -1456,28 +1567,45 @@ export default function DevStoreDashboard() {
               </button>
             )}
             <div className="ds-sidebar__header">
-              <div className="ds-sidebar__logo"><img src="/logo.png" alt="DevStore" /></div>
+              <div className="ds-sidebar__logo" style={{ width: 56, height: 56, minWidth: 56, borderRadius: 14, background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, border: "none", boxShadow: "none" }}>
+                <img src="/logo.png" alt="DevStore" style={{ width: "100%", height: "100%", objectFit: "contain", filter: "none" }} />
+              </div>
               <span className="ds-sidebar__brand ds-sidebar__label">DevStore</span>
               {isMobile && <button onClick={() => setSidebarOpen(false)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: "var(--ds-text-secondary)" }} aria-label="Close menu"><Icon d={Icons.X} size={18} /></button>}
             </div>
 
             <nav className="ds-sidebar__nav">
-              {NAV.map((n, i) => (
-                <button key={n.key} className={`ds-sidebar__nav-item ${activeNav === i ? "ds-sidebar__nav-item--active" : ""}`}
-                  onClick={() => { setActiveNav(i); setActiveCategory(["All", "API", "Model", "Dataset"][i]); setQuery(""); if (isMobile) setSidebarOpen(false); }}>
-                  <span className="ds-sidebar__icon-wrap">
-                    <Icon d={Icons[n.key]} size={24} />
-                  </span>
-                  <span className="ds-sidebar__label">{n.label}</span>
-                </button>
-              ))}
+              {NAV.map((n, i) => {
+                // Map navigation keys to React Icons
+                const getNavIcon = (key) => {
+                  switch(key) {
+                    case "Home": return <MdHome size={24} />;
+                    case "Cpu": return <FaNetworkWired size={24} />;
+                    case "Brain": return <FaBrain size={24} />;
+                    case "Database": return <FaDatabase size={24} />;
+                    default: return <Icon d={Icons[key]} size={24} />;
+                  }
+                };
+
+                return (
+                  <button key={n.key} className={`ds-sidebar__nav-item ${activeNav === i ? "ds-sidebar__nav-item--active" : ""}`}
+                    onClick={() => { setActiveNav(i); setActiveCategory(["All", "API", "Model", "Dataset"][i]); setQuery(""); if (isMobile) setSidebarOpen(false); }}>
+                    <span className="ds-sidebar__icon-wrap">
+                      {getNavIcon(n.key)}
+                    </span>
+                    <span className="ds-sidebar__label">{n.label}</span>
+                  </button>
+                );
+              })}
             </nav>
 
             <div className="ds-sidebar__divider" />
             <div className="ds-sidebar__section-title">Quick Access</div>
             <nav className="ds-sidebar__nav">
               <button className="ds-sidebar__nav-item" onClick={() => setShowChat(true)}>
-                <span className="ds-sidebar__icon-wrap"><Icon d={Icons.Brain} size={24} color="var(--ds-primary)" /></span>
+                <span className="ds-sidebar__icon-wrap">
+                  <FaRobot size={24} color="var(--ds-primary)" />
+                </span>
                 <span className="ds-sidebar__label">AI Assistant</span>
               </button>
               <button className="ds-sidebar__nav-item" onClick={() => setIsTopChart(!isTopChart)} style={isTopChart ? { color: "var(--ds-primary)" } : {}}>
@@ -1509,7 +1637,7 @@ export default function DevStoreDashboard() {
                 </button>
               ) : (
                 <button className="ds-sidebar__bottom-item" onClick={() => setShowAuth(true)} aria-label="Login">
-                  <span className="ds-sidebar__icon-wrap"><Icon d={Icons.Github} size={24} /></span>
+                  <span className="ds-sidebar__icon-wrap"><IoLogIn size={24} /></span>
                   <span className="ds-sidebar__label">Login</span>
                 </button>
               )}
@@ -1520,185 +1648,234 @@ export default function DevStoreDashboard() {
         {/* Main content + Intent Discovery wrapper */}
         <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
           <main className="ds-main" style={{ flex: 1, minWidth: 0 }}>
-          <header style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: isMobile ? 10 : 16, padding: `14px ${pad}px`, flexWrap: isMobile ? "wrap" : "nowrap", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(59,130,246,0.1)"}`, background: dk ? "rgba(8,12,24,0.8)" : "rgba(240,244,255,0.8)", backdropFilter: "blur(12px)" }}>
-            {isMobile && (
-              <Tooltip text="Open menu" position="bottom">
-                <button onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", color: dk ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 10 }}>
-                  <Icon d={Icons.Menu} size={20} />
-                </button>
-              </Tooltip>
-            )}
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 10, color: dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.65)", textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 600 }}>Dev-Store · AI Bharat</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: dk ? "rgba(255,255,255,0.82)" : "rgba(0,0,0,0.9)", letterSpacing: "-0.02em" }}>Tools & Integrations</div>
-            </div>
-
-            {/* Search */}
-            <div style={{ flex: isMobile ? "1 1 100%" : 1, maxWidth: 640, margin: isMobile ? "8px auto 4px" : "0 auto", position: "relative", order: isMobile ? 10 : 0, width: isMobile ? "100%" : "auto" }}>
-              <div style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
-                <Icon d={Icons.Search} size={15} color={searchLoading ? A : (dk ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.5)")} />
-              </div>
-              <input type="text" value={query} onChange={e => setQuery(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-                placeholder={focused ? "Search via OpenSearch + Bedrock AI..." : ghostText}
-                style={{ width: "100%", borderRadius: 99, padding: isMobile ? "10px 20px 10px 42px" : "12px 20px 12px 42px", background: dk ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.75)", border: `1px solid ${focused ? `${A}99` : (dk ? "rgba(255,255,255,0.08)" : "rgba(59,130,246,0.15)")}`, color: dk ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.95)", fontSize: 14, fontFamily: "'DM Sans', sans-serif", boxShadow: focused ? `0 0 0 3px ${A}20` : "none", transition: "border-color 0.25s, box-shadow 0.25s" }} />
-              {searchLoading && <div style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", display: "flex", gap: 3 }}>{[0, 0.15, 0.3].map(d => <div key={d} style={{ width: 4, height: 4, borderRadius: "50%", background: A, animation: `pulseGlow 1s ${d}s infinite` }} />)}</div>}
-            </div>
-
-            {/* Stats + Theme toggle */}
-            <div style={{ display: "flex", gap: 8, flexShrink: 0, alignItems: "center" }}>
-              {!isMobile && <>
-                <Tooltip text="Backend API status" position="bottom">
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 99, background: apiOnline === true ? "rgba(0,200,130,0.06)" : apiOnline === false ? "rgba(239,68,68,0.06)" : (dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"), border: `1px solid ${apiOnline === true ? "rgba(0,200,130,0.2)" : apiOnline === false ? "rgba(239,68,68,0.2)" : (dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)")}`, fontSize: 11, color: apiOnline === true ? "#059669" : apiOnline === false ? "#ef4444" : (dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.6)") }}>
-                    <div style={{ width: 5, height: 5, borderRadius: "50%", background: apiOnline === true ? "#059669" : apiOnline === false ? "#ef4444" : (dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)"), animation: apiOnline === true ? "pulseGlow 2s infinite" : "none" }} />
-                    {apiOnline === true ? "API Live" : apiOnline === false ? "Offline" : "Checking…"}
-                  </div>
-                </Tooltip>
-                {[{ icon: "TrendUp", color: "#059669", label: `${stableCount} live`, tip: "Live resources" }, { icon: "Package", color: dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.55)", label: `${tools.length} tools`, tip: "Total tools" }].map(s => (
-                  <Tooltip key={s.label} text={s.tip} position="bottom">
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 14px", borderRadius: 99, background: dk ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.6)", border: `1px solid ${dk ? "rgba(255,255,255,0.06)" : "rgba(59,130,246,0.1)"}`, fontSize: 12, color: dk ? "rgba(255,255,255,0.42)" : "rgba(0,0,0,0.7)" }}>
-                      <Icon d={Icons[s.icon]} size={13} color={s.color} />{s.label}
-                    </div>
-                  </Tooltip>
-                ))}
-              </>}
-              <Tooltip text="Toggle Hinglish Mode" position="bottom">
-                <button onClick={() => setIsHinglish(!isHinglish)} style={{
-                  padding: "0 12px", height: 38, borderRadius: 12, display: "flex", alignItems: "center", gap: 6,
-                  background: isHinglish ? "linear-gradient(135deg, #F59E0B22, #F59E0B0A)" : (dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"),
-                  border: `1px solid ${isHinglish ? "#F59E0B55" : (dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
-                  color: isHinglish ? "#F59E0B" : (dk ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)"),
-                  fontWeight: 700, fontSize: 13, cursor: "pointer", transition: "all 0.3s ease"
-                }}>
-                  🇮🇳 {isHinglish ? "Hinglish: ON" : "Hinglish: OFF"}
-                </button>
-              </Tooltip>
-              <Tooltip text={dk ? "Switch to Light mode" : "Switch to Dark mode"} position="bottom">
-                <button onClick={toggleTheme} style={{ width: 38, height: 38, borderRadius: 12, background: dk ? `linear-gradient(135deg,${A}22,${A}0A)` : `linear-gradient(135deg,${A}15,${A}08)`, border: `1px solid ${dk ? `${A}30` : `${A}20`}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: dk ? AL : A, transition: "all 0.3s ease", boxShadow: `0 2px 8px rgba(59,130,246,0.15)` }}>
-                  <Icon d={dk ? Icons.Sun : Icons.Moon} size={16} />
-                </button>
-              </Tooltip>
-              <button
-                onClick={() => setShowSubmission(true)}
-                style={{
-                  height: 38, padding: isMobile ? "0 14px" : "0 20px", borderRadius: 12,
-                  background: `linear-gradient(135deg, ${A}, ${AL})`, color: "#fff",
-                  display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 13,
-                  cursor: "pointer", border: "none", transition: "transform 0.2s, box-shadow 0.2s",
-                  boxShadow: `0 4px 15px ${A}30`
-                }}
-                onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
-                onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
-              >
-                <Icon d={Icons.Plus} size={16} color="#fff" />
-                {!isMobile && "Create App"}
-              </button>
-            </div>
-          </header>
-
-          {/* New Horizontal Row of Filter Pills */}
-          <div style={{ flexShrink: 0, padding: `8px ${pad}px`, background: dk ? "rgba(8,12,24,0.4)" : "rgba(240,244,255,0.4)", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"}` }}>
-            <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", gap: 10, overflowX: "auto" }} className="hide-scroll">
-              {["Trending", "Top Free", "Top Paid", "Most Popular"].map(f => (
-                <button
-                  key={f}
-                  onClick={() => setActiveDiscovery(f)}
-                  style={{
-                    padding: "6px 14px", borderRadius: 99, fontSize: 11, fontWeight: 700,
-                    cursor: "pointer", border: "1px solid transparent", transition: "all 0.2s",
-                    background: activeDiscovery === f ? dk ? "rgba(255,255,255,0.1)" : "rgba(59,130,246,0.1)" : "transparent",
-                    color: activeDiscovery === f ? A : dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)",
-                    borderColor: activeDiscovery === f ? `${A}40` : "transparent"
-                  }}
-                >
-                  {f}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Category Pill Bar */}
-          <div className="hide-scroll" style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: isMobile ? 12 : 8, padding: isMobile ? `14px ${pad}px` : `12px ${pad}px`, borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.04)" : "rgba(59,130,246,0.08)"}`, background: dk ? "rgba(10,15,30,0.6)" : "rgba(234,239,255,0.6)", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 auto", maxWidth: 1600, width: "100%" }}>
-              {CATEGORIES.map(cat => (
-                <Tooltip key={cat} text={`Filter: ${cat === "All" ? "All Types" : cat}`} position="bottom">
-                  <button className="cat-btn" onClick={() => { setActiveCategory(cat); setQuery(""); }}
-                    style={{ padding: "7px 16px", borderRadius: 99, fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 12, cursor: "pointer", flexShrink: 0, transition: "all 0.2s", background: activeCategory === cat ? A : (dk ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.85)"), color: activeCategory === cat ? "#fff" : (dk ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.75)"), border: `1px solid ${activeCategory === cat ? A : (dk ? "rgba(255,255,255,0.06)" : "rgba(59,130,246,0.2)")}` }}>
-                    {cat === "All" ? "All Types" : cat}
+            <header style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: isMobile ? 10 : 16, padding: `14px ${pad}px`, flexWrap: isMobile ? "wrap" : "nowrap", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(59,130,246,0.1)"}`, background: dk ? "rgba(8,12,24,0.8)" : "rgba(240,244,255,0.8)", backdropFilter: "blur(12px)" }}>
+              {isMobile && (
+                <Tooltip text="Open menu" position="bottom">
+                  <button onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", color: dk ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 10 }}>
+                    <Icon d={Icons.Menu} size={20} />
                   </button>
                 </Tooltip>
-              ))}
-              {errorMsg && <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(239,68,68,0.7)", padding: "6px 12px", borderRadius: 99, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", flexShrink: 0 }}>⚠ {errorMsg}</div>}
-              <div style={{ marginLeft: "auto", flexShrink: 0, display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: dk ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.6)" }}>
-                <Icon d={Icons.ChevronR} size={13} />{loading ? "—" : filtered.length} result{filtered.length !== 1 ? "s" : ""}
-              </div>
-            </div>
-          </div>
-
-          {/* Bento Grid Container */}
-          <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: `24px ${pad}px` }}>
-            <div style={{ maxWidth: 1600, margin: "0 auto", width: "100%" }}>
-
-              {/* Intent Discovery Stacked on Mobile */}
-              {isMobile && showChat && (
-                <div style={{ marginBottom: 24, borderRadius: 24, overflow: "hidden", border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, background: dk ? "rgba(10,16,32,0.6)" : "rgba(255,255,255,0.6)", backdropFilter: "blur(20px)" }}>
-                  <AIChatPanel onClose={() => setShowChat(false)} isDark={dk} isMobile={isMobile} />
-                </div>
               )}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 10, color: dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.65)", textTransform: "uppercase", letterSpacing: "0.15em", fontWeight: 600 }}>Dev-Store · AI Bharat</div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: dk ? "rgba(255,255,255,0.82)" : "rgba(0,0,0,0.9)", letterSpacing: "-0.02em" }}>Tools & Integrations</div>
+              </div>
 
-              <div style={{
-                display: "grid",
-                gridTemplateColumns: width >= 1100 ? "repeat(12, 1fr)" : (width >= 768 ? "repeat(2, 1fr)" : "1fr"),
-                gap: 20,
-                gridAutoFlow: "dense",
-                position: "relative",
-                zIndex: 10
-              }}>
-                {loading
-                  ? Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} style={{ gridColumn: width >= 1100 ? (i % 7 === 0 ? "span 6" : "span 3") : "span 1" }}>
-                      <SkeletonCard index={i} isDark={dk} />
+              {/* Search */}
+              <div className="ds-search-container" style={{ flex: isMobile ? "1 1 100%" : 1, maxWidth: 640, margin: isMobile ? "8px auto 4px" : "0 auto", position: "relative", order: isMobile ? 10 : 0, width: isMobile ? "100%" : "auto", transition: "max-width 0.3s ease" }}>
+                <div style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+                  <Icon d={Icons.Search} size={15} color={searchLoading ? A : (dk ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.5)")} />
+                </div>
+                <input type="text" value={query} onChange={e => setQuery(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
+                  placeholder={focused ? "Search via OpenSearch + Bedrock AI..." : ghostText}
+                  style={{ width: "100%", borderRadius: 99, padding: isMobile ? "10px 20px 10px 42px" : "12px 20px 12px 42px", background: dk ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.75)", border: `1px solid ${focused ? `${A}99` : (dk ? "rgba(255,255,255,0.08)" : "rgba(59,130,246,0.15)")}`, color: dk ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.95)", fontSize: 14, fontFamily: "'DM Sans', sans-serif", boxShadow: focused ? `0 0 0 3px ${A}20` : "none", transition: "border-color 0.25s, box-shadow 0.25s" }} />
+                {searchLoading && <div style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", display: "flex", gap: 3 }}>{[0, 0.15, 0.3].map(d => <div key={d} style={{ width: 4, height: 4, borderRadius: "50%", background: A, animation: `pulseGlow 1s ${d}s infinite` }} />)}</div>}
+              </div>
+
+              {/* Stats + Theme toggle */}
+              <div style={{ display: "flex", gap: 8, flexShrink: 0, alignItems: "center" }}>
+                {!isMobile && <>
+                  <Tooltip text="Backend API status" position="bottom">
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 99, background: apiOnline === true ? "rgba(0,200,130,0.06)" : apiOnline === false ? "rgba(239,68,68,0.06)" : (dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"), border: `1px solid ${apiOnline === true ? "rgba(0,200,130,0.2)" : apiOnline === false ? "rgba(239,68,68,0.2)" : (dk ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)")}`, fontSize: 11, color: apiOnline === true ? "#059669" : apiOnline === false ? "#ef4444" : (dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.6)") }}>
+                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: apiOnline === true ? "#059669" : apiOnline === false ? "#ef4444" : (dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.4)"), animation: apiOnline === true ? "pulseGlow 2s infinite" : "none" }} />
+                      {apiOnline === true ? "API Live" : apiOnline === false ? "Offline" : "Checking…"}
                     </div>
-                  ))
-                  : filtered.length === 0
-                    ? <div style={{ gridColumn: "1/-1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "60px 0" }}>
-                      <div style={{ fontSize: 36 }}>🔍</div>
-                      <div style={{ fontSize: 14, color: dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.6)" }}>No results found</div>
-                      <button onClick={() => { setQuery(""); setActiveCategory("All"); setActiveDiscovery("Trending"); }} style={{ padding: "8px 20px", borderRadius: 99, border: `1px solid ${A}55`, background: "none", color: A, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Clear filters</button>
-                    </div>
-                    : filtered.map((tool, i) => {
-                      const isFeatured = i % 7 === 0;
-                      return (
-                        <div key={tool.id} style={{
-                          gridColumn: width >= 1100 ? (isFeatured ? "span 6" : "span 3") : "span 1",
-                          cursor: "pointer"
-                        }} onClick={() => setSelectedTool(tool)}>
-                          <ToolCard tool={tool} index={i} isDark={dk} />
+                  </Tooltip>
+                  {[{ icon: "TrendUp", color: "#059669", label: `${stableCount} live`, tip: "Live resources" }, { icon: "Package", color: dk ? "rgba(255,255,255,0.28)" : "rgba(0,0,0,0.55)", label: `${tools.length} tools`, tip: "Total tools" }].map(s => (
+                    <Tooltip key={s.label} text={s.tip} position="bottom">
+                      <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "7px 14px", borderRadius: 99, background: dk ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.6)", border: `1px solid ${dk ? "rgba(255,255,255,0.06)" : "rgba(59,130,246,0.1)"}`, fontSize: 12, color: dk ? "rgba(255,255,255,0.42)" : "rgba(0,0,0,0.7)" }}>
+                        <Icon d={Icons[s.icon]} size={13} color={s.color} />{s.label}
+                      </div>
+                    </Tooltip>
+                  ))}
+                </>}
+                <Tooltip text="Toggle Hinglish Mode" position="bottom">
+                  <button onClick={() => setIsHinglish(!isHinglish)} style={{
+                    padding: "0 12px", height: 38, borderRadius: 12, display: "flex", alignItems: "center", gap: 6,
+                    background: isHinglish ? "linear-gradient(135deg, #F59E0B22, #F59E0B0A)" : (dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"),
+                    border: `1px solid ${isHinglish ? "#F59E0B55" : (dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)")}`,
+                    color: isHinglish ? "#F59E0B" : (dk ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)"),
+                    fontWeight: 700, fontSize: 13, cursor: "pointer", transition: "all 0.3s ease"
+                  }}>
+                    🇮🇳 {isHinglish ? "Hinglish: ON" : "Hinglish: OFF"}
+                  </button>
+                </Tooltip>
+                <Tooltip text={dk ? "Switch to Light mode" : "Switch to Dark mode"} position="bottom">
+                  <button onClick={toggleTheme} style={{ width: 38, height: 38, borderRadius: 12, background: dk ? `linear-gradient(135deg,${A}22,${A}0A)` : `linear-gradient(135deg,${A}15,${A}08)`, border: `1px solid ${dk ? `${A}30` : `${A}20`}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: dk ? AL : A, transition: "all 0.3s ease", boxShadow: `0 2px 8px rgba(59,130,246,0.15)` }}>
+                    <Icon d={dk ? Icons.Sun : Icons.Moon} size={16} />
+                  </button>
+                </Tooltip>
+                {/* Login/Signup Button */}
+                {status === "authenticated" ? (
+                  <Tooltip text="Sign Out" position="bottom">
+                    <button onClick={() => signOut()} style={{ width: 38, height: 38, borderRadius: 12, background: dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: dk ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.6)", transition: "all 0.3s ease" }}>
+                      {session.user?.image ? (
+                        <img src={session.user.image} alt="Avatar" style={{ width: 24, height: 24, borderRadius: "50%" }} />
+                      ) : (
+                        <div style={{ width: 24, height: 24, borderRadius: "50%", background: A, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: "bold", fontSize: 12 }}>
+                          {session.user?.name?.charAt(0) || "U"}
                         </div>
-                      );
-                    })
-                }
+                      )}
+                    </button>
+                  </Tooltip>
+                ) : (
+                  <Tooltip text="Login or Sign Up" position="bottom">
+                    <button onClick={() => setShowAuth(true)} style={{ width: 38, height: 38, borderRadius: 12, background: dk ? `linear-gradient(135deg, rgba(0,255,163,0.15), rgba(0,255,163,0.05))` : `linear-gradient(135deg, rgba(0,255,163,0.1), rgba(0,255,163,0.03))`, border: `1px solid ${dk ? "rgba(0,255,163,0.3)" : "rgba(0,255,163,0.2)"}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#00FFA3", transition: "all 0.3s ease", boxShadow: `0 2px 8px rgba(0,255,163,0.15)` }}>
+                      <IoLogIn size={18} />
+                    </button>
+                  </Tooltip>
+                )}
+                <button
+                  onClick={() => setShowSubmission(true)}
+                  style={{
+                    height: 38, padding: isMobile ? "0 14px" : "0 20px", borderRadius: 12,
+                    background: `linear-gradient(135deg, ${A}, ${AL})`, color: "#fff",
+                    display: "flex", alignItems: "center", gap: 8, fontWeight: 800, fontSize: 13,
+                    cursor: "pointer", border: "none", transition: "transform 0.2s, box-shadow 0.2s",
+                    boxShadow: `0 4px 15px ${A}30`
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.transform = "translateY(-1px)"}
+                  onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+                >
+                  <Icon d={Icons.Plus} size={16} color="#fff" />
+                  {!isMobile && "Create App"}
+                </button>
+              </div>
+            </header>
+
+            {/* New Horizontal Row of Filter Pills */}
+            <div style={{ flexShrink: 0, padding: `8px ${pad}px`, background: dk ? "rgba(8,12,24,0.4)" : "rgba(240,244,255,0.4)", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)"}` }}>
+              <div style={{ maxWidth: 1600, margin: "0 auto", display: "flex", gap: 10, overflowX: "auto" }} className="hide-scroll">
+                {["Trending", "Top Free", "Top Paid", "Most Popular"].map(f => (
+                  <button
+                    key={f}
+                    onClick={() => setActiveDiscovery(f)}
+                    style={{
+                      padding: "6px 14px", borderRadius: 99, fontSize: 11, fontWeight: 700,
+                      cursor: "pointer", border: "1px solid transparent", transition: "all 0.2s",
+                      background: activeDiscovery === f ? dk ? "rgba(255,255,255,0.1)" : "rgba(59,130,246,0.1)" : "transparent",
+                      color: activeDiscovery === f ? A : dk ? "rgba(255,255,255,0.4)" : "rgba(0,0,0,0.5)",
+                      borderColor: activeDiscovery === f ? `${A}40` : "transparent"
+                    }}
+                  >
+                    {f}
+                  </button>
+                ))}
               </div>
             </div>
-            <div style={{ marginTop: 32, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 11, color: dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.5)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
-              <div style={{ width: 5, height: 5, borderRadius: "50%", background: A, animation: "pulseGlow 2s infinite" }} />
-              Connected to AWS OpenSearch · Bedrock Semantic Search
-              <Icon d={Icons.Wifi} size={11} color={dk ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.35)"} />
-            </div>
-          </div>
-        </main>
 
-        {/* Intent Discovery Sidebar widget (Desktop) */}
-        {!isMobile && showChat && (
-          <aside style={{
-            width: 420, flexShrink: 0,
-            borderLeft: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
-            background: dk ? "rgba(2, 6, 23, 0.7)" : "rgba(255,255,255,0.7)",
-            backdropFilter: "blur(24px)", zIndex: 60,
-            display: "flex", flexDirection: "column"
-          }}>
-            <AIChatPanel onClose={() => setShowChat(false)} isDark={dk} isMobile={isMobile} />
-          </aside>
-        )}
+            {/* Category Pill Bar */}
+            <div className="hide-scroll" style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: isMobile ? 12 : 8, padding: isMobile ? `14px ${pad}px` : `12px ${pad}px`, borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.04)" : "rgba(59,130,246,0.08)"}`, background: dk ? "rgba(10,15,30,0.6)" : "rgba(234,239,255,0.6)", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 auto", maxWidth: 1600, width: "100%" }}>
+                {CATEGORIES.map(cat => (
+                  <Tooltip key={cat} text={`Filter: ${cat === "All" ? "All Types" : cat}`} position="bottom">
+                    <button className="cat-btn" onClick={() => { setActiveCategory(cat); setQuery(""); }}
+                      style={{ padding: "7px 16px", borderRadius: 99, fontFamily: "'DM Sans', sans-serif", fontWeight: 600, fontSize: 12, cursor: "pointer", flexShrink: 0, transition: "all 0.2s", background: activeCategory === cat ? A : (dk ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.85)"), color: activeCategory === cat ? "#fff" : (dk ? "rgba(255,255,255,0.38)" : "rgba(0,0,0,0.75)"), border: `1px solid ${activeCategory === cat ? A : (dk ? "rgba(255,255,255,0.06)" : "rgba(59,130,246,0.2)")}` }}>
+                      {cat === "All" ? "All Types" : cat}
+                    </button>
+                  </Tooltip>
+                ))}
+                {errorMsg && <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "rgba(239,68,68,0.7)", padding: "6px 12px", borderRadius: 99, background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)", flexShrink: 0 }}>⚠ {errorMsg}</div>}
+                <div style={{ marginLeft: "auto", flexShrink: 0, display: "flex", alignItems: "center", gap: 5, fontSize: 11.5, color: dk ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.6)" }}>
+                  <Icon d={Icons.ChevronR} size={13} />{loading ? "—" : filtered.length} result{filtered.length !== 1 ? "s" : ""}
+                </div>
+              </div>
+            </div>
+
+            {/* Bento Grid Container */}
+            <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: `24px ${pad}px` }}>
+              <div style={{ maxWidth: 1600, margin: "0 auto", width: "100%" }}>
+
+                {/* Intent Discovery Stacked on Mobile */}
+                {isMobile && showChat && (
+                  <div style={{ marginBottom: 24, borderRadius: 24, overflow: "hidden", border: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`, background: dk ? "rgba(10,16,32,0.6)" : "rgba(255,255,255,0.6)", backdropFilter: "blur(20px)" }}>
+                    <AIChatPanel onClose={() => setShowChat(false)} isDark={dk} isMobile={isMobile} />
+                  </div>
+                )}
+
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: (() => {
+                    if (width < 768) return "1fr"; // Mobile: single column but proper card layout
+                    if (showChat && !isMobile) {
+                      // When chat is open, adjust columns based on available space
+                      if (width >= 1600) return "repeat(auto-fit, minmax(280px, 1fr))";
+                      if (width >= 1400) return "repeat(auto-fit, minmax(260px, 1fr))";
+                      if (width >= 1200) return "repeat(2, 1fr)";
+                      return "1fr"; // Very narrow, single column
+                    }
+                    // Normal layout without chat
+                    if (width >= 1100) return "repeat(12, 1fr)";
+                    if (width >= 768) return "repeat(2, 1fr)";
+                    return "1fr";
+                  })(),
+                  gap: isMobile ? 16 : 20,
+                  gridAutoFlow: "dense",
+                  position: "relative",
+                  zIndex: 10,
+                  // Mobile-specific styles to ensure proper card layout
+                  ...(isMobile && {
+                    padding: "0 16px",
+                    maxWidth: "100%",
+                    width: "100%"
+                  })
+                }}>
+                  {loading
+                    ? Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} style={{ 
+                        gridColumn: (() => {
+                          if (width < 768) return "span 1";
+                          if (showChat && !isMobile) return "span 1"; // When chat is open, all cards take 1 column
+                          return width >= 1100 ? (i % 7 === 0 ? "span 6" : "span 3") : "span 1";
+                        })()
+                      }}>
+                        <SkeletonCard index={i} isDark={dk} />
+                      </div>
+                    ))
+                    : filtered.length === 0
+                      ? <div style={{ gridColumn: "1/-1", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "60px 0" }}>
+                        <div style={{ fontSize: 36 }}>🔍</div>
+                        <div style={{ fontSize: 14, color: dk ? "rgba(255,255,255,0.3)" : "rgba(0,0,0,0.6)" }}>No results found</div>
+                        <button onClick={() => { setQuery(""); setActiveCategory("All"); setActiveDiscovery("Trending"); }} style={{ padding: "8px 20px", borderRadius: 99, border: `1px solid ${A}55`, background: "none", color: A, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Clear filters</button>
+                      </div>
+                      : filtered.map((tool, i) => {
+                        const isFeatured = i % 7 === 0 && !showChat; // Disable featured layout when chat is open
+                        return (
+                          <div key={tool.id} style={{
+                            gridColumn: (() => {
+                              if (width < 768) return "span 1";
+                              if (showChat && !isMobile) return "span 1"; // When chat is open, all cards take 1 column
+                              return width >= 1100 ? (isFeatured ? "span 6" : "span 3") : "span 1";
+                            })(),
+                            cursor: "pointer"
+                          }} onClick={() => setSelectedTool(tool)}>
+                            <ToolCard tool={tool} index={i} isDark={dk} />
+                          </div>
+                        );
+                      })
+                  }
+                </div>
+              </div>
+              <div style={{ marginTop: 32, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 11, color: dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.5)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                <div style={{ width: 5, height: 5, borderRadius: "50%", background: A, animation: "pulseGlow 2s infinite" }} />
+                Connected to AWS OpenSearch · Bedrock Semantic Search
+                <Icon d={Icons.Wifi} size={11} color={dk ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.35)"} />
+              </div>
+            </div>
+          </main>
+
+          {/* Intent Discovery Sidebar widget (Desktop) */}
+          {!isMobile && showChat && (
+            <aside style={{
+              width: 360, flexShrink: 0,
+              borderLeft: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
+              background: dk ? "rgba(2, 6, 23, 0.7)" : "rgba(255,255,255,0.7)",
+              backdropFilter: "blur(24px)", zIndex: 60,
+              display: "flex", flexDirection: "column"
+            }}>
+              <AIChatPanel onClose={() => setShowChat(false)} isDark={dk} isMobile={isMobile} />
+            </aside>
+          )}
         </div>
 
         {/* Resource Detail Workbench Modal */}
