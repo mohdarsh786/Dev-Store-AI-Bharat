@@ -8,6 +8,10 @@ applications:
             - npm ci
         build:
           commands:
+            # Inject variables into the Next.js runtime
+            - echo "DATABASE_URL=$DATABASE_URL" >> .env.production
+            - echo "NEXTAUTH_URL=$NEXTAUTH_URL" >> .env.production
+            - echo "NEXTAUTH_SECRET=$NEXTAUTH_SECRET" >> .env.production
             - npm run build
       artifacts:
         baseDirectory: .next
