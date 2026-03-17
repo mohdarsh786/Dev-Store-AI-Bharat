@@ -1,11 +1,17 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Environment variables exposed to Server Components and Route Handlers only
   env: {
-    BACKEND_URL: process.env.BACKEND_URL || "http://localhost:8000",
+    BACKEND_URL: process.env.BACKEND_URL || "http://13.208.165.10:8000",
   },
-  // Allow cross-origin images from avatar providers
+  async rewrites() {
+    return [
+      {
+        source: '/api/v1/:path*',
+        destination: 'http://13.208.165.10:8000/api/v1/:path*',
+      },
+    ];
+  },
   images: {
     remotePatterns: [
       {
@@ -15,5 +21,4 @@ const nextConfig: NextConfig = {
     ],
   },
 };
-
 export default nextConfig;
