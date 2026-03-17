@@ -9,6 +9,7 @@ applications:
         
         build:
           commands:
+            - env | grep NEXT_PUBLIC_ >> .env.production
             - echo "AUTH_TRUST_HOST=$AUTH_TRUST_HOST" >> .env.production
             - echo "AUTH_SECRET=$AUTH_SECRET" >> .env.production
             - echo "DATABASE_URL=$DATABASE_URL" >> .env.production

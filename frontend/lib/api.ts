@@ -1,9 +1,13 @@
-// Client-side API library — calls Next.js Route Handlers or FastAPI directly (if NEXT_PUBLIC_API_BASE_URL is set)
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || "";
+// Client-side API library — calls Next.js Route Handlers or FastAPI directly
+const API_BASE = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000")
+    .replace(/\/$/, "") // Strip trailing slash
+    .replace(/\/api\/v1$/, ""); // Strip redundant v1 prefix if user provided it in env
 
 class ApiService {
     private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-        const url = `${API_BASE}${endpoint}`;
+        // Ensure endpoint starts with a slash
+        const path = endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+        const url = `${API_BASE}${path}`;
         const config: RequestInit = {
             headers: {
                 "Content-Type": "application/json",
