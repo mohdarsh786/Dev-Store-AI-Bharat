@@ -8,9 +8,9 @@ from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
 import time
 import logging
+from cachetools import TTLCache
 
 from routers import auth, search, resources, categories, boilerplate, users, health
-from clients.redis_client import RedisClient
 from clients.database import DatabaseClient
 from clients.opensearch import OpenSearchClient
 from clients.bedrock import BedrockClient
@@ -23,6 +23,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Global In-Memory Cache for API Responses
+response_cache = TTLCache(maxsize=1000, ttl=300)
 
 def _is_healthy(result) -> bool:
     """Normalize boolean and dict-based health checks."""
@@ -38,14 +40,11 @@ async def lifespan(app: FastAPI):
     logger.info("Starting DevStore API Gateway...")
     app.state.start_time = time.time()
     
-    # Initialize clients
-    app.state.redis = RedisClient()
-    await app.state.redis.connect()
+    # Initialize caching
+    app.state.cache = response_cache
     
     app.state.db = DatabaseClient()
-    
     app.state.opensearch = OpenSearchClient()
-    
     app.state.bedrock = BedrockClient()
     
     logger.info("All clients initialized successfully")
@@ -54,9 +53,9 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down DevStore API Gateway...")
-    await app.state.redis.disconnect()
     app.state.db.close()
     app.state.opensearch.close()
+    app.state.cache.clear()
     logger.info("Shutdown complete")
 
 
@@ -150,7 +149,7 @@ async def root():
     return {
         "service": "DevStore Centralized API",
         "version": "2.0.0",
-        "deployment": "EC2 with Redis",
+        "deployment": "Serverless",
         "docs": "/api/docs"
     }
 
@@ -158,12 +157,10 @@ async def root():
 @app.get("/api/v1/status")
 async def api_status(request: Request):
     """API status with dependency health checks"""
-    redis_status = await request.app.state.redis.ping()
     db_status = request.app.state.db.health_check()
     opensearch_status = request.app.state.opensearch.health_check()
     
     all_healthy = all([
-        _is_healthy(redis_status),
         _is_healthy(db_status),
         _is_healthy(opensearch_status),
     ])
@@ -172,7 +169,6 @@ async def api_status(request: Request):
         "status": "healthy" if all_healthy else "degraded",
         "timestamp": time.time(),
         "dependencies": {
-            "redis": "healthy" if _is_healthy(redis_status) else "unhealthy",
             "database": "healthy" if _is_healthy(db_status) else "unhealthy",
             "opensearch": "healthy" if _is_healthy(opensearch_status) else "unhealthy",
             "bedrock": "healthy"  # Bedrock is stateless

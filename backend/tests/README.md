@@ -1,37 +1,38 @@
-# Dev-Store Backend Tests
+# Dev-Store Backend Test Suite
 
-## Quick Connection Test
+Comprehensive testing for the Dev-Store FastAPI logic layer, ensuring robust interactions with Neon, Pinecone, and AWS Bedrock.
 
-Test AWS connections (Bedrock + OpenSearch):
-```bash
-python test_connections_simple.py
-```
+---
 
-## Full Test Suite
+## 🚀 Execution
 
 Run all tests:
 ```bash
 pytest
 ```
 
-Run specific test:
+Run with coverage report:
 ```bash
-pytest test_opensearch_client.py
-pytest test_bedrock.py
+pytest --cov=services --cov=rag --cov-report=term-missing
 ```
 
-## Test Files
+---
 
-- `test_connections_simple.py` - Quick AWS connection validation
-- `test_aws_connection.py` - Comprehensive AWS setup test
-- `test_opensearch_client.py` - OpenSearch client tests
-- `test_bedrock.py` - Bedrock integration tests
-- `test_rag_system.py` - RAG engine tests
-- `test_search_service.py` - Search service tests
-- `test_database_client.py` - Database client tests
-- `test_models.py` - Data model tests
-- `test_ranking_features.py` - Ranking algorithm tests
+## 📂 Key Test Categories
 
-## Setup Tests
+- **`test_connections_simple.py`**: Fast validation of AWS, Neon, and Pinecone connectivity.
+- **`test_search_service.py`**: Critical path testing for the Dual-Layer Search engine.
+- **`test_rag_engine.py`**: Validation of AI assistant responses and context injection.
+- **`test_pinecone_client.py`**: Tests for vector upserts and semantic queries.
+- **`test_database_client.py`**: Neon PostgreSQL connection and migration tests.
+- **`test_ranking_features.py`**: Verification of normalized scoring and trending logic.
 
-- `wait_and_setup.py` - Auto-retry OpenSearch setup script
+---
+
+## 🛠️ Testing Infrastructure
+
+- **Mocking:** Intensive use of `unittest.mock` for Bedrock and Pinecone to reduce API costs during development.
+- **Database:** Uses a test schema in Neon to prevent production data corruption.
+- **RAG Validation:** Automated checks for multilingual query parsing (English/Hinglish).
+
+**License:** MIT

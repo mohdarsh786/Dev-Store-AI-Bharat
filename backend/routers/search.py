@@ -16,7 +16,6 @@ router = APIRouter(prefix="/api/v1", tags=["search"])
 # Check if AWS services are configured
 AWS_CONFIGURED = all([
     os.getenv("AWS_REGION"),
-    os.getenv("OPENSEARCH_HOST"),
     os.getenv("DATABASE_URL"),
 ])
 
@@ -154,11 +153,15 @@ async def search(request: SearchRequest) -> SearchResponse:
     try:
         if search_service is not None:
             try:
+                # Extract resource_type and pricing_type from request
+                resource_type = request.resource_types[0] if request.resource_types else None
+                pricing_type = request.pricing_filter[0] if request.pricing_filter else None
+                
                 result = search_service.search(
                     query=request.query,
-                    pricing_filter=request.pricing_filter,
-                    resource_types=request.resource_types,
                     limit=request.limit,
+                    resource_type=resource_type,
+                    pricing_type=pricing_type,
                 )
                 return SearchResponse(
                     query=result["query"],
@@ -207,17 +210,81 @@ async def intent_search(request: SearchRequest) -> SearchResponse:
 
 
 @router.get("/trending")
-async def trending(resource_type: Optional[str] = None, limit: int = 40) -> SearchResponse:
+async def trending(
+    category: Optional[str] = None,
+    pricing_type: Optional[str] = None,
+    sort: Optional[str] = None,
+    limit: int = 40
+) -> SearchResponse:
+    """Get trending resources with proper filtering support."""
     try:
+        if search_service is not None:
+            try:
+                # Normalize category parameter
+                normalized_type = None
+                if category and category.lower() not in ("all", "none"):
+                    normalized_type = category.lower()
+                
+                # Normalize pricing_type parameter
+                normalized_pricing = None
+                if pricing_type and pricing_type.lower() in ("free", "paid", "freemium"):
+                    normalized_pricing = pricing_type.lower()
+                
+                result = search_service.trending(
+                    resource_type=normalized_type,
+                    pricing_type=normalized_pricing,
+                    sort_by=sort,
+                    limit=limit
+                )
+                
+                return SearchResponse(
+                    query="trending",
+                    results=result["results"],
+                    total=result["total"],
+                    source=result.get("source", "database"),
+                )
+            except Exception as e:
+                logger.warning(f"Database trending lookup failed, falling back to mock: {e}")
+
+        # Fallback to existing mock logic
         if IngestionRepository is not None and os.getenv("DATABASE_URL"):
             try:
                 repository = IngestionRepository()
-                normalized_type = None if resource_type in (None, "All") else resource_type.lower()
-                results = repository.list_trending_resources(normalized_type, limit)
+                
+                # Normalize category parameter
+                normalized_type = None
+                if category and category.lower() not in ("all", "none"):
+                    normalized_type = category.lower()
+                
+                # Normalize pricing_type parameter
+                normalized_pricing = None
+                if pricing_type and pricing_type.lower() in ("free", "paid", "freemium"):
+                    normalized_pricing = pricing_type.lower()
+                
+                # Get filtered results from database
+                results = repository.list_trending_resources(
+                    resource_type=normalized_type,
+                    pricing_type=normalized_pricing,
+                    sort_by=sort,
+                    limit=limit
+                )
+                
                 if results:
-                    for item in results:
-                        item["score"] = item.get("rank_score", 0.0)
+                    # Map categories from type field and normalize scores
+                    CATEGORY_MAP = {"model": "Model", "api": "API", "dataset": "Dataset"}
+                    scores = [float(item.get("rank_score") or 0) for item in results]
+                    max_score = max(scores) if scores else 1.0
+                    if max_score <= 0: max_score = 1.0
+                    
+                    for item, raw_score in zip(results, scores):
+                        # Category: map from type field, capitalize properly
+                        raw_type = str(item.get("type") or item.get("resource_type") or "api").lower()
+                        item["category"] = CATEGORY_MAP.get(raw_type, raw_type.capitalize())
+                        item["resource_type"] = item["category"]  # Ensure consistency
+                        # Score: Min-Max normalize to [0, 0.99] within filtered results
+                        item["score"] = round((raw_score / max_score) * 0.99, 4)
                         item["rank"] = item.get("category_rank")
+                    
                     return SearchResponse(
                         query="trending",
                         results=results,
@@ -227,10 +294,34 @@ async def trending(resource_type: Optional[str] = None, limit: int = 40) -> Sear
             except Exception as e:
                 logger.warning(f"Database trending lookup failed, falling back to mock: {e}")
 
+        # Fallback to mock data with proper filtering
         results = get_mock_results(query="", limit=100)
-        if resource_type and resource_type != "All":
-            results = [item for item in results if item["resource_type"] == resource_type]
-        results.sort(key=lambda item: item.get("rank", 999))
+        
+        # Apply category filter
+        if category and category.lower() not in ("all", "none"):
+            results = [item for item in results if item["resource_type"].lower() == category.lower()]
+        
+        # Apply pricing filter
+        if pricing_type and pricing_type.lower() in ("free", "paid", "freemium"):
+            results = [item for item in results if item["pricing_type"].lower() == pricing_type.lower()]
+        
+        # Apply sorting
+        if sort == "paid":
+            results = [item for item in results if item["pricing_type"] == "paid"]
+            results.sort(key=lambda item: item.get("github_stars", 0), reverse=True)
+        elif sort == "popularity" or sort == "downloads":
+            results.sort(key=lambda item: item.get("downloads", 0), reverse=True)
+        else:
+            results.sort(key=lambda item: item.get("rank", 999))
+        
+        # Normalize scores within filtered results
+        if results:
+            scores = [item.get("score", 0) for item in results]
+            max_score = max(scores) if scores else 1.0
+            if max_score > 0:
+                for item, raw_score in zip(results, scores):
+                    item["score"] = round((raw_score / max_score) * 0.99, 4)
+        
         final_results = results[:limit]
         return SearchResponse(
             query="trending",

@@ -405,8 +405,40 @@ class IngestionRepository:
             "ranking_date": ranking_date.isoformat(),
         }
 
-    def list_trending_resources(self, resource_type: Optional[str] = None, limit: int = 40) -> List[Dict[str, Any]]:
-        query = """
+    def list_trending_resources(
+        self, 
+        resource_type: Optional[str] = None, 
+        pricing_type: Optional[str] = None,
+        sort_by: Optional[str] = None,
+        limit: int = 40
+    ) -> List[Dict[str, Any]]:
+        """Get trending resources with comprehensive filtering support."""
+        
+        # Build WHERE clause conditions
+        where_conditions = []
+        params = []
+        
+        if resource_type:
+            where_conditions.append("type = %s")
+            params.append(resource_type)
+            
+        if pricing_type:
+            where_conditions.append("pricing_type = %s")
+            params.append(pricing_type)
+        
+        where_clause = "WHERE " + " AND ".join(where_conditions) if where_conditions else ""
+        
+        # Build ORDER BY clause
+        if sort_by == "downloads":
+            order_clause = "ORDER BY download_count DESC, github_stars DESC"
+        elif sort_by == "popularity":
+            order_clause = "ORDER BY github_stars DESC, download_count DESC"
+        elif sort_by == "paid":
+            order_clause = "ORDER BY github_stars DESC, rank_score DESC"
+        else:
+            order_clause = "ORDER BY rank_score DESC, trending_score DESC, github_stars DESC"
+        
+        query = f"""
             SELECT
                 id,
                 name,
@@ -422,11 +454,13 @@ class IngestionRepository:
                 category_rank,
                 trending_score
             FROM resources
-            WHERE (%s IS NULL OR type = %s)
-            ORDER BY rank_score DESC, trending_score DESC, github_stars DESC
+            {where_clause}
+            {order_clause}
             LIMIT %s
         """
-        return self.db.execute_query(query, (resource_type, resource_type, limit)) or []
+        
+        params.append(limit)
+        return self.db.execute_query(query, tuple(params)) or []
 
     def list_all_resources(self, limit: int = 1000, offset: int = 0) -> List[Dict[str, Any]]:
         """List all resources from database"""

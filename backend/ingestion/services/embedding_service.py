@@ -5,6 +5,7 @@ Generates embeddings using Amazon Bedrock
 """
 import hashlib
 from typing import List, Dict, Any, Optional
+from cachetools import TTLCache
 
 
 class EmbeddingService:
@@ -12,23 +13,24 @@ class EmbeddingService:
     Service for generating embeddings via Bedrock
     
     Features:
-    - Content-based caching using Redis
+    - Content-based caching in memory
     - Batch processing
     - Change detection
     """
     
-    def __init__(self, bedrock_client, redis_client=None):
+    def __init__(self, bedrock_client):
         """
         Initialize embedding service
         
         Args:
             bedrock_client: Bedrock client (from clients/bedrock.py)
-            redis_client: Optional Redis client for caching
         """
         self.bedrock = bedrock_client
-        self.redis = redis_client
+        self.cache = TTLCache(maxsize=5000, ttl=86400)
         self.model_id = "amazon.titan-embed-text-v1"
-        self.cache_ttl = 86400 * 30  # 30 days
+        
+        from ingestion.services.chunking_service import ChunkingService
+        self.chunker = ChunkingService()
     
     def generate_embedding(
         self,
@@ -49,17 +51,17 @@ class EmbeddingService:
         text = self._generate_embedding_text(resource)
         
         # Check cache
-        if use_cache and self.redis:
+        if use_cache:
             cached = self._get_cached_embedding(text)
             if cached:
                 return cached
         
         # Generate embedding via Bedrock
         try:
-            embedding = self.bedrock.generate_embedding(text, self.model_id)
+            embedding = self.bedrock.generate_embedding(text)
             
             # Cache result
-            if use_cache and self.redis and embedding:
+            if use_cache and embedding:
                 self._cache_embedding(text, embedding)
             
             return embedding
@@ -96,13 +98,49 @@ class EmbeddingService:
                     embeddings[resource_id] = embedding
         
         return embeddings
+
+    def generate_chunked_batch(
+        self,
+        resources: list[dict],
+        batch_size: int = 25
+    ) -> list[dict]:
+        """
+        Generate embeddings for resources by breaking them into RAG chunks first.
+        
+        Args:
+            resources: Master list of documents
+            batch_size: Batch size for embedding API throttling
+            
+        Returns:
+            List of chunk records padded with 'embedding' vectors. 
+            Suitable for Pinecone ingestion.
+        """
+        # 1. Chunk all resources
+        chunked_resources = []
+        for resource in resources:
+            chunks = self.chunker.split_resource(resource)
+            chunked_resources.extend(chunks)
+            
+        # 2. Embed all chunks
+        embedded_chunks = []
+        for i in range(0, len(chunked_resources), batch_size):
+            batch = chunked_resources[i:i + batch_size]
+            for chunk in batch:
+                embedding = self.generate_embedding(chunk)
+                if embedding:
+                    chunk["embedding"] = embedding
+                    embedded_chunks.append(chunk)
+                    
+        return embedded_chunks
     
     def _generate_embedding_text(self, resource: Dict[str, Any]) -> str:
         """
-        Generate text for embedding from resource fields
-        
-        Combines: name, description, tags, category
+        Generate text for embedding from resource fields.
+        Prioritizes RAG-chunked 'text_content' if available.
         """
+        if resource.get('text_content'):
+            return resource['text_content']
+            
         parts = []
         
         # Add name
@@ -131,29 +169,10 @@ class EmbeddingService:
     
     def _get_cached_embedding(self, text: str) -> Optional[List[float]]:
         """Get embedding from cache"""
-        if not self.redis:
-            return None
-        
         cache_key = self._get_cache_key(text)
-        cached = self.redis.get(cache_key)
-        
-        if cached:
-            # Parse cached embedding
-            import json
-            return json.loads(cached)
-        
-        return None
+        return self.cache.get(cache_key)
     
     def _cache_embedding(self, text: str, embedding: List[float]):
-        """Cache embedding in Redis"""
-        if not self.redis:
-            return
-        
+        """Cache embedding in Memory"""
         cache_key = self._get_cache_key(text)
-        
-        import json
-        self.redis.setex(
-            cache_key,
-            self.cache_ttl,
-            json.dumps(embedding)
-        )
+        self.cache[cache_key] = embedding

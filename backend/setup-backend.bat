@@ -1,98 +1,120 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal EnableDelayedExpansion
+chcp 65001 >nul
 
-echo ================================================
-echo  Dev-Store Backend Setup (Windows)
-echo ================================================
+:: ╔══════════════════════════════════════════════════════════════════╗
+:: ║          DevStore AI Bharat — Backend Setup Script              ║
+:: ║          FastAPI + AWS Bedrock + Pinecone + Neon                 ║
+:: ╚══════════════════════════════════════════════════════════════════╝
+
+echo.
+echo  ██████╗ ███████╗██╗   ██╗    ███████╗████████╗ ██████╗ ██████╗ ███████╗
+echo  ██╔══██╗██╔════╝██║   ██║    ██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗██╔════╝
+echo  ██║  ██║█████╗  ██║   ██║    ███████╗   ██║   ██║   ██║██████╔╝█████╗
+echo  ██║  ██║██╔══╝  ╚██╗ ██╔╝    ╚════██║   ██║   ██║   ██║██╔══██╗██╔══╝
+echo  ██████╔╝███████╗ ╚████╔╝     ███████║   ██║   ╚██████╔╝██║  ██║███████╗
+echo  ╚═════╝ ╚══════╝  ╚═══╝      ╚══════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝
+echo.
+echo                    AI for Bharat — Developer Marketplace
+echo                    ─────────────────────────────────────
 echo.
 
-REM Check if Python is installed
-where python >nul 2>nul
-if errorlevel 1 (
-    echo [ERROR] Python not found. Please install Python 3.11+ from https://python.org
+:: ─── Step 1: Python check ───────────────────────────────────────────────────
+echo  [1/5] Checking Python...
+where python >nul 2>&1
+if !errorlevel! neq 0 (
+    echo.
+    echo  [ERROR] Python not found. Install from https://python.org (v3.11+)
+    echo.
     pause
     exit /b 1
 )
-
-REM Check Python version
-echo Checking Python version...
-for /f "tokens=2" %%v in ('python --version 2^>^&1') do set PYVER=%%v
-echo [OK] Python !PYVER! detected.
+for /f "tokens=*" %%v in ('python --version') do set PYTHON_VER=%%v
+echo        !PYTHON_VER! detected. OK.
 echo.
 
-REM Create virtual environment
-if exist venv\Scripts\activate.bat (
-    echo [INFO] Virtual environment already exists.
+:: ─── Step 2: .env check ──────────────────────────────────────────────────────
+echo  [2/5] Checking environment configuration...
+if not exist ".env" (
+    echo.
+    echo  ╔══════════════════════════════════════════════════════════════════╗
+    echo  ║  [WARNING]  .env not found!                                      ║
+    echo  ║                                                                  ║
+    echo  ║  Required backend config:                                        ║
+    echo  ║    • DATABASE_URL=postgresql://user:pass@host/db                 ║
+    echo  ║    • PINECONE_API_KEY=your-pinecone-api-key                      ║
+    echo  ║    • AWS_ACCESS_KEY_ID=your-aws-access-key                       ║
+    echo  ║    • AWS_SECRET_ACCESS_KEY=your-aws-secret-key                   ║
+    echo  ║    • BEDROCK_MODEL_ID=your-bedrock-model-arn                     ║
+    echo  ║                                                                  ║
+    echo  ║  Copy .env.example to .env and configure.                       ║
+    echo  ╚══════════════════════════════════════════════════════════════════╝
+    echo.
+    echo  The server will start but AI features will be disabled.
+    echo.
+    choice /C YN /M "  Continue anyway? (Y=Yes, N=Exit)"
+    if !errorlevel! equ 2 exit /b 1
+    echo.
 ) else (
-    echo Creating virtual environment...
+    echo        .env found. Configuration loaded. OK.
+    echo.
+)
+
+:: ─── Step 3: Virtual environment ────────────────────────────────────────────
+echo  [3/5] Setting up virtual environment...
+if not exist "venv" (
+    echo        Creating virtual environment...
     python -m venv venv
-    if errorlevel 1 (
-        echo [ERROR] Failed to create virtual environment.
+    if !errorlevel! neq 0 (
+        echo.
+        echo  [ERROR] Failed to create virtual environment.
         pause
         exit /b 1
     )
-    echo [OK] Virtual environment created.
-)
-echo.
-
-REM Activate virtual environment
-echo Activating virtual environment...
-call venv\Scripts\activate.bat
-if errorlevel 1 (
-    echo [ERROR] Failed to activate virtual environment.
-    pause
-    exit /b 1
-)
-echo.
-
-REM Upgrade pip
-echo Upgrading pip...
-python -m pip install --upgrade pip --quiet
-echo.
-
-REM Install dependencies
-echo Installing dependencies (this may take a few minutes)...
-pip install -r requirements.txt --quiet
-if errorlevel 1 (
-    echo [ERROR] Failed to install dependencies.
-    pause
-    exit /b 1
-)
-echo [OK] Dependencies installed.
-echo.
-
-REM Copy environment template
-if not exist .env (
-    if exist .env.example (
-        echo Creating .env file...
-        copy .env.example .env >nul
-        echo [OK] .env created. Please edit backend\.env with your AWS credentials.
-    ) else (
-        echo [WARNING] .env.example not found.
-    )
+    echo        Virtual environment created.
 ) else (
-    echo [INFO] .env already exists.
+    echo        Virtual environment exists. Skipping creation.
 )
 echo.
 
-REM Clean cache
-echo Cleaning Python cache...
-for /d /r %%d in (__pycache__) do @if exist "%%d" rd /s /q "%%d" 2>nul
-del /s /q *.pyc 2>nul
-echo [OK] Cache cleaned.
+:: ─── Step 4: Install dependencies ───────────────────────────────────────────
+echo  [4/5] Installing Python dependencies...
+call venv\Scripts\activate.bat
+if !errorlevel! neq 0 (
+    echo.
+    echo  [ERROR] Failed to activate virtual environment.
+    pause
+    exit /b 1
+)
+
+pip install -r requirements.txt
+if !errorlevel! neq 0 (
+    echo.
+    echo  [ERROR] Failed to install dependencies.
+    pause
+    exit /b 1
+)
+echo        Dependencies installed successfully.
 echo.
 
-echo ================================================
-echo  Backend Setup Complete!
-echo ================================================
+:: ─── Step 5: Launch ──────────────────────────────────────────────────────────
+echo  [5/5] Launching FastAPI dev server...
 echo.
-echo Next steps:
-echo   1. Edit .env with your AWS credentials
-echo   2. Test connections: cd tests ^&^& python test_connections_simple.py
-echo   3. Create OpenSearch index: python setup_opensearch_index.py
-echo   4. Start server: uvicorn api_gateway:app --reload --port 8000
-echo.
-echo API docs will be at: http://localhost:8000/api/docs
+echo  ╔══════════════════════════════════════════════════════════════════╗
+echo  ║                                                                  ║
+echo  ║   ✅  DevStore Backend Initialized — AI for Bharat               ║
+echo  ║                                                                  ║
+echo  ║   Backend API:  http://localhost:8000                            ║
+echo  ║   API Docs:     http://localhost:8000/docs                       ║
+echo  ║   Health Check: http://localhost:8000/api/v1/health              ║
+echo  ║                                                                  ║
+echo  ║   Frontend (start separately):                                   ║
+echo  ║     cd ..\frontend                                               ║
+echo  ║     npm install                                                  ║
+echo  ║     npm run dev                                                  ║
+echo  ║                                                                  ║
+echo  ║   Press Ctrl+C to stop the server                                ║
+echo  ╚══════════════════════════════════════════════════════════════════╝
 echo.
 
-pause
+uvicorn main:app --reload --port 8000

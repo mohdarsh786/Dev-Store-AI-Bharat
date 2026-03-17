@@ -9,7 +9,8 @@ class Settings(BaseSettings):
     """Application settings"""
     
     # Database
-    database_url: str
+    neon_database_url: Optional[str] = None
+    database_url: Optional[str] = None  # Legacy fallback support
     db_pool_size: int = 20
     db_max_overflow: int = 10
     
@@ -19,28 +20,24 @@ class Settings(BaseSettings):
     aws_access_key_id: Optional[str] = None
     aws_secret_access_key: Optional[str] = None
     
-    # Redis (ElastiCache)
-    redis_host: str
-    redis_port: int = 6379
-    redis_password: Optional[str] = None
-    redis_db: int = 0
-    redis_pool_size: int = 50
-    redis_socket_timeout: int = 5
+    # Pinecone
+    pinecone_api_key: Optional[str] = None
+    pinecone_index_name: str = "devstore_resources"
     
-    # OpenSearch
-    opensearch_host: str
+    # Legacy OpenSearch (Kept as Optional for fallback scripts)
+    opensearch_host: Optional[str] = None
     opensearch_port: int = 443
     opensearch_use_ssl: bool = True
     opensearch_index_name: str = "devstore_resources"
     
     # Bedrock
-    bedrock_model_id: str = "anthropic.claude-3-sonnet-20240229-v1:0"
-    bedrock_embedding_model_id: str = "amazon.titan-embed-text-v1"
+    bedrock_model_id: str = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+    bedrock_embedding_model_id: str = "amazon.titan-embed-text-v2:0"
     bedrock_claude_arn: Optional[str] = None
     
-    # S3
-    s3_bucket_boilerplate: str
-    s3_bucket_crawler_data: str
+    # S3 (Legacy)
+    s3_bucket_boilerplate: Optional[str] = None
+    s3_bucket_crawler_data: Optional[str] = None
 
     # Ingestion
     ingestion_github_api_token: Optional[str] = None
@@ -51,6 +48,11 @@ class Settings(BaseSettings):
     ingestion_schedule_hours: int = 12
     ranking_schedule_hour_utc: int = 3
     crawler_snapshot_prefix: str = "snapshots"
+
+    # Additional System Parameters
+    system_prompt: Optional[str] = None
+    pinecone_environment: Optional[str] = None
+    bedrock_region: Optional[str] = None
 
     # API
     api_rate_limit: int = 100

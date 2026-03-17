@@ -13,11 +13,18 @@ class BedrockClient:
         self.embedding_model_id = os.getenv("EMBEDDING_MODEL_ID", "amazon.titan-embed-text-v1")
 
         try:
+            from botocore.config import Config
+            config = Config(
+                connect_timeout=3,
+                read_timeout=3,
+                retries={'max_attempts': 0} # No retries for search-time latency
+            )
             self._client = boto3.client(
                 service_name='bedrock-runtime',
-                region_name=self.bedrock_region
+                region_name=self.bedrock_region,
+                config=config
             )
-            logger.info(f"🚀 Nova Engine Ready | Region: {self.bedrock_region} | Model: {self.model_id}")
+            logger.info(f"Nova Engine Ready | Region: {self.bedrock_region} | Model: {self.model_id}")
         except Exception as e:
             logger.error(f"Failed to initialize Bedrock: {e}")
 
@@ -53,9 +60,5 @@ class BedrockClient:
 
     def generate_embedding(self, text: str) -> List[float]:
         body = json.dumps({"inputText": text})
-        try:
-            response = self._client.invoke_model(modelId=self.embedding_model_id, body=body)
-            return json.loads(response['body'].read())['embedding']
-        except Exception as e:
-            logger.error(f"Embedding Error: {e}")
-            return [0.0] * 1536
+        response = self._client.invoke_model(modelId=self.embedding_model_id, body=body)
+        return json.loads(response['body'].read())['embedding']

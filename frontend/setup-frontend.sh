@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ╔══════════════════════════════════════════════════════════════════╗
 # ║          DevStore AI Bharat — Frontend Setup Script             ║
-# ║          Next.js 14 + AWS Bedrock + OpenSearch                  ║
+# ║          Next.js 16 + AWS Bedrock + Pinecone + Neon             ║
 # ╚══════════════════════════════════════════════════════════════════╝
 set -e
 
@@ -53,8 +53,11 @@ if [ ! -f ".env.local" ]; then
     echo -e " ${YELLOW}║                                                                  ║${RESET}"
     echo -e " ${YELLOW}║  Required frontend config:                                       ║${RESET}"
     echo -e " ${YELLOW}║    BACKEND_URL=http://localhost:8000                             ║${RESET}"
+    echo -e " ${YELLOW}║    AUTH_SECRET=your-nextauth-secret-key                          ║${RESET}"
+    echo -e " ${YELLOW}║    AUTH_GITHUB_ID=your-github-oauth-id (optional)               ║${RESET}"
+    echo -e " ${YELLOW}║    AUTH_GOOGLE_ID=your-google-oauth-id (optional)               ║${RESET}"
     echo -e " ${YELLOW}║                                                                  ║${RESET}"
-    echo -e " ${YELLOW}║  See README.md § 3 'Security Protocols' for all vars.           ║${RESET}"
+    echo -e " ${YELLOW}║  Copy .env.local.example to .env.local and configure.           ║${RESET}"
     echo -e " ${YELLOW}╚══════════════════════════════════════════════════════════════════╝${RESET}"
     echo ""
     echo -e " ${DIM}App will start in demo mode (backend offline fallback).${RESET}"
@@ -94,7 +97,10 @@ echo -e " ${GREEN}${BOLD}║   API Routes: ${CYAN}http://localhost:3000/api/*${G
 echo -e " ${GREEN}${BOLD}║                                                                  ║${RESET}"
 echo -e " ${GREEN}${BOLD}║   Backend (start separately):                                    ║${RESET}"
 echo -e " ${GREEN}${BOLD}║     ${DIM}cd ../backend${GREEN}                                               ║${RESET}"
-    echo -e " ${GREEN}${BOLD}║     ${DIM}uvicorn api_gateway:app --reload --port 8000${GREEN}                ║${RESET}"
+echo -e " ${GREEN}${BOLD}║     ${DIM}python -m venv venv${GREEN}                                         ║${RESET}"
+echo -e " ${GREEN}${BOLD}║     ${DIM}source venv/bin/activate${GREEN}                                    ║${RESET}"
+echo -e " ${GREEN}${BOLD}║     ${DIM}pip install -r requirements.txt${GREEN}                             ║${RESET}"
+echo -e " ${GREEN}${BOLD}║     ${DIM}uvicorn main:app --reload --port 8000${GREEN}                       ║${RESET}"
 echo -e " ${GREEN}${BOLD}║                                                                  ║${RESET}"
 echo -e " ${GREEN}${BOLD}║   Press Ctrl+C to stop the server                                ║${RESET}"
 echo -e " ${GREEN}${BOLD}╚══════════════════════════════════════════════════════════════════╝${RESET}"

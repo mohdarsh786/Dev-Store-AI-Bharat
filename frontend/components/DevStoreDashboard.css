@@ -48,6 +48,23 @@
     opacity: 0.08;
 }
 
+/* ─── Grid Layout Transitions ───────────────────────────────────────────── */
+.ds-grid-container {
+    transition: grid-template-columns 0.3s ease-in-out, gap 0.3s ease-in-out;
+}
+
+.ds-grid-item {
+    transition: grid-column 0.3s ease-in-out, transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+}
+
+.ds-main-content {
+    transition: width 0.3s ease-in-out, margin 0.3s ease-in-out;
+}
+
+.ds-sidebar-transition {
+    transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out, width 0.3s ease-in-out;
+}
+
 [data-theme="light"] .ds-orb { opacity: 0.06; }
 
 /* ─── Sidebar (240px ↔ 80px) ─────────────────────────────────────────────── */

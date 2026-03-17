@@ -109,7 +109,14 @@ function mapResource(r, index = 0, contextualRank = null) {
     return type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
   };
   
-  const resourceType = normalizeType(r.category || r.resource_type || r.type);
+  // Dynamic category mapping from DB type field - NO Tool fallback
+  const TYPE_CATEGORY_MAP = { 'model': 'Model', 'api': 'API', 'dataset': 'Dataset' };
+  const rawType = String(r.type || r.resource_type || 'api').toLowerCase();
+  const typeBasedCategory = TYPE_CATEGORY_MAP[rawType] || rawType.charAt(0).toUpperCase() + rawType.slice(1);
+  const rawCategory = (r.category && r.category !== 'Unknown' && r.category !== 'Tool')
+    ? r.category
+    : typeBasedCategory;
+  const resourceType = normalizeType(rawCategory);
   const meta = TYPE_META[resourceType] || { color: "#6B7280", emoji: "📦" };
   
   // Detect source from URL if not provided
@@ -125,14 +132,19 @@ function mapResource(r, index = 0, contextualRank = null) {
   const sourceMeta = SOURCE_META[source] || SOURCE_META.github;
   
   // Separate stars and downloads (don't conflate)
-  const stars = r.github_stars || r.stars || 0;
-  const downloads = r.downloads || r.download_count || 0;
+  const stars = parseInt(r.github_stars || r.stars || 0, 10) || 0;
+  const downloads = parseInt(r.downloads || r.download_count || 0, 10) || 0;
   
   const latencyRaw = parseFloat(r.latency_ms ?? r.p99_latency ?? 0);
   const latency = latencyRaw > 0 ? latencyRaw : Math.floor(Math.random() * 80 + 10);
 
+  // Mapping pricing from is_free boolean if available (priority)
+  let pricingType = r.pricing_type || "free";
+  if (r.is_free === true) pricingType = "free";
+  if (r.is_free === false && pricingType === "free") pricingType = "paid";
+
   // Context-aware install command based on resource type
-  let installCommand = r.install_command || r.endpoint_url || "";
+  let installCommand = r.code_snippet || r.install_command || r.endpoint_url || "";
   if (!installCommand) {
     const slug = r.name?.replace(/\s+/g, "-").toLowerCase() || "resource";
     const sourceUrl = r.source_url || "";
@@ -172,8 +184,8 @@ function mapResource(r, index = 0, contextualRank = null) {
     id: r.id || String(Math.random()),
     name: r.name,
     category: resourceType,  // Properly capitalized category
-    pricingType: r.pricing_type || "free",  // Actual pricing from database
-    description: r.description || "",
+    pricingType: pricingType,  // Actual pricing from database or is_free
+    description: r.text_content ? `Snippet: ${r.text_content}` : (r.description || ""),
     installCommand,
     latency,
     iconEmoji: meta.emoji,
@@ -191,6 +203,9 @@ function mapResource(r, index = 0, contextualRank = null) {
     language: r.language || r.metadata?.language,
     private: r.private || r.metadata?.private,
     gated: r.gated || r.metadata?.gated,
+    score: typeof r.score === 'number' ? Math.min(0.99, r.score) : r.score,  // Hard cap at 99%
+    insights: r.insights || r.description?.slice(0, 200) || "",
+    codeSnippet: r.code_snippet || "",
   };
 }
 
@@ -538,6 +553,11 @@ function ResourceWorkbench({ tool, onClose, isDark }) {
             label: "Parameters", 
             value: metadata.parameters || `${tool.downloads > 1000000 ? '41.6M' : '7B'}`,
             icon: Icons.Brain
+          },
+          {
+            label: "Model Insight",
+            value: tool.insights || "High precision reasoning",
+            icon: Icons.Zap
           }
         ],
         flowConfig: {
@@ -716,7 +736,9 @@ function ResourceWorkbench({ tool, onClose, isDark }) {
             </div>
             <Blueprint />
             <div style={{ minHeight: 180, background: dk ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)", borderRadius: 24, padding: 24, border: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)"}` }}>
-              <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 12, textTransform: "uppercase", color: tool.accentColor }}>{tool.category} Insights</div>
+              <div style={{ fontSize: 13, fontWeight: 800, marginBottom: 12, textTransform: "uppercase", color: tool.accentColor }}>
+                {tool.category === 'API' ? 'API INSIGHTS' : tool.category === 'Model' ? 'MODEL INSIGHTS' : tool.category === 'Dataset' ? 'DATASET INSIGHTS' : `${tool.category} INSIGHTS`}
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 }}>
                 {config.insights.map((insight, idx) => (
                   <div key={idx}>
@@ -1358,7 +1380,9 @@ export default function DevStoreDashboard() {
       try {
         // Convert category to lowercase for backend API
         const categoryLower = activeCategory === "All" ? null : activeCategory.toLowerCase();
-        const resp = await apiService.search(query, { resource_types: categoryLower ? [categoryLower] : null, limit: 40 });
+        // Derive pricing_filter from activeDiscovery
+        const pricingFilter = activeDiscovery === "Top Free" ? ["free"] : activeDiscovery === "Top Paid" ? ["paid"] : null;
+        const resp = await apiService.search(query, { resource_types: categoryLower ? [categoryLower] : null, pricing_filter: pricingFilter, limit: 40 });
         // Map with contextual ranks for search results
         const mappedResults = (resp.results || []).map((r, idx) => mapResource(r, idx, idx + 1));
         setFiltered(mappedResults);
@@ -1478,8 +1502,8 @@ export default function DevStoreDashboard() {
         )}
 
         {/* Main content + Intent Discovery wrapper */}
-        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-          <main className="ds-main" style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ flex: 1, display: "flex", overflow: "hidden", transition: "all 0.3s ease-in-out" }}>
+          <main className="ds-main" style={{ flex: 1, minWidth: 0, transition: "all 0.3s ease-in-out" }}>
           <header style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: isMobile ? 10 : 16, padding: `14px ${pad}px`, flexWrap: isMobile ? "wrap" : "nowrap", borderBottom: `1px solid ${dk ? "rgba(255,255,255,0.05)" : "rgba(59,130,246,0.1)"}`, background: dk ? "rgba(8,12,24,0.8)" : "rgba(240,244,255,0.8)", backdropFilter: "blur(12px)" }}>
             {isMobile && (
               <Tooltip text="Open menu" position="bottom">
@@ -1499,7 +1523,7 @@ export default function DevStoreDashboard() {
                 <Icon d={Icons.Search} size={15} color={searchLoading ? A : (dk ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.5)")} />
               </div>
               <input type="text" value={query} onChange={e => setQuery(e.target.value)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-                placeholder={focused ? "Search via OpenSearch + Bedrock AI..." : ghostText}
+                placeholder={focused ? "Search via Pinecone + Bedrock AI..." : ghostText}
                 style={{ width: "100%", borderRadius: 99, padding: isMobile ? "10px 20px 10px 42px" : "12px 20px 12px 42px", background: dk ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.75)", border: `1px solid ${focused ? `${A}99` : (dk ? "rgba(255,255,255,0.08)" : "rgba(59,130,246,0.15)")}`, color: dk ? "rgba(255,255,255,0.88)" : "rgba(0,0,0,0.95)", fontSize: 14, fontFamily: "'DM Sans', sans-serif", boxShadow: focused ? `0 0 0 3px ${A}20` : "none", transition: "border-color 0.25s, box-shadow 0.25s" }} />
               {searchLoading && <div style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", display: "flex", gap: 3 }}>{[0, 0.15, 0.3].map(d => <div key={d} style={{ width: 4, height: 4, borderRadius: "50%", background: A, animation: `pulseGlow 1s ${d}s infinite` }} />)}</div>}
             </div>
@@ -1607,15 +1631,43 @@ export default function DevStoreDashboard() {
 
               <div style={{
                 display: "grid",
-                gridTemplateColumns: width >= 1100 ? "repeat(12, 1fr)" : (width >= 768 ? "repeat(2, 1fr)" : "1fr"),
+                gridTemplateColumns: (() => {
+                  // Dynamic grid columns based on chat sidebar state and screen size
+                  if (isMobile) {
+                    return "1fr"; // Always single column on mobile
+                  } else if (showChat && !isMobile) {
+                    // When chat is open on desktop, use fewer columns to maintain card width
+                    return width >= 1400 ? "repeat(8, 1fr)" : width >= 1100 ? "repeat(6, 1fr)" : "repeat(4, 1fr)";
+                  } else {
+                    // When chat is closed, use full grid
+                    return width >= 1100 ? "repeat(12, 1fr)" : width >= 768 ? "repeat(2, 1fr)" : "1fr";
+                  }
+                })(),
                 gap: 20,
                 gridAutoFlow: "dense",
                 position: "relative",
-                zIndex: 10
+                zIndex: 10,
+                transition: "all 0.3s ease-in-out"
               }}>
                 {loading
                   ? Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} style={{ gridColumn: width >= 1100 ? (i % 7 === 0 ? "span 6" : "span 3") : "span 1" }}>
+                    <div key={i} style={{ 
+                      gridColumn: (() => {
+                        if (isMobile) return "span 1";
+                        if (showChat && !isMobile) {
+                          // When chat is open, adjust spans for fewer columns
+                          const isFeatured = i % 7 === 0;
+                          if (width >= 1400) return isFeatured ? "span 4" : "span 2";
+                          if (width >= 1100) return isFeatured ? "span 3" : "span 2";
+                          return isFeatured ? "span 2" : "span 1";
+                        } else {
+                          // When chat is closed, use original spans
+                          const isFeatured = i % 7 === 0;
+                          return width >= 1100 ? (isFeatured ? "span 6" : "span 3") : "span 1";
+                        }
+                      })(),
+                      transition: "all 0.3s ease-in-out"
+                    }}>
                       <SkeletonCard index={i} isDark={dk} />
                     </div>
                   ))
@@ -1629,8 +1681,20 @@ export default function DevStoreDashboard() {
                       const isFeatured = i % 7 === 0;
                       return (
                         <div key={tool.id} style={{
-                          gridColumn: width >= 1100 ? (isFeatured ? "span 6" : "span 3") : "span 1",
-                          cursor: "pointer"
+                          gridColumn: (() => {
+                            if (isMobile) return "span 1";
+                            if (showChat && !isMobile) {
+                              // When chat is open, adjust spans for fewer columns
+                              if (width >= 1400) return isFeatured ? "span 4" : "span 2";
+                              if (width >= 1100) return isFeatured ? "span 3" : "span 2";
+                              return isFeatured ? "span 2" : "span 1";
+                            } else {
+                              // When chat is closed, use original spans
+                              return width >= 1100 ? (isFeatured ? "span 6" : "span 3") : "span 1";
+                            }
+                          })(),
+                          cursor: "pointer",
+                          transition: "all 0.3s ease-in-out"
                         }} onClick={() => setSelectedTool(tool)}>
                           <ToolCard tool={tool} index={i} isDark={dk} />
                         </div>
@@ -1641,7 +1705,7 @@ export default function DevStoreDashboard() {
             </div>
             <div style={{ marginTop: 32, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 11, color: dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.5)", letterSpacing: "0.08em", textTransform: "uppercase" }}>
               <div style={{ width: 5, height: 5, borderRadius: "50%", background: A, animation: "pulseGlow 2s infinite" }} />
-              Connected to AWS OpenSearch · Bedrock Semantic Search
+              Connected to Pinecone Vector DB · Bedrock Semantic RAG
               <Icon d={Icons.Wifi} size={11} color={dk ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.35)"} />
             </div>
           </div>
@@ -1654,11 +1718,49 @@ export default function DevStoreDashboard() {
             borderLeft: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
             background: dk ? "rgba(2, 6, 23, 0.7)" : "rgba(255,255,255,0.7)",
             backdropFilter: "blur(24px)", zIndex: 60,
-            display: "flex", flexDirection: "column"
+            display: "flex", flexDirection: "column",
+            transition: "all 0.3s ease-in-out",
+            transform: showChat ? "translateX(0)" : "translateX(100%)",
+            opacity: showChat ? 1 : 0
           }}>
             <AIChatPanel onClose={() => setShowChat(false)} isDark={dk} isMobile={isMobile} />
           </aside>
         )}
+
+        {/* Alternative: Overlay Mode AI Assistant (uncomment to use overlay instead of sidebar) */}
+        {/* 
+        {!isMobile && showChat && (
+          <>
+            <div 
+              style={{
+                position: "fixed",
+                top: 0, left: 0, right: 0, bottom: 0,
+                background: "rgba(0, 0, 0, 0.3)",
+                backdropFilter: "blur(8px)",
+                zIndex: 50,
+                transition: "all 0.3s ease-in-out",
+                opacity: showChat ? 1 : 0
+              }}
+              onClick={() => setShowChat(false)}
+            />
+            <aside style={{
+              position: "fixed",
+              top: 0, right: 0, bottom: 0,
+              width: 420,
+              background: dk ? "rgba(2, 6, 23, 0.95)" : "rgba(255, 255, 255, 0.95)",
+              backdropFilter: "blur(24px)",
+              borderLeft: `1px solid ${dk ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)"}`,
+              zIndex: 60,
+              display: "flex", flexDirection: "column",
+              transition: "all 0.3s ease-in-out",
+              transform: showChat ? "translateX(0)" : "translateX(100%)",
+              boxShadow: "0 0 50px rgba(0, 0, 0, 0.3)"
+            }}>
+              <AIChatPanel onClose={() => setShowChat(false)} isDark={dk} isMobile={isMobile} />
+            </aside>
+          </>
+        )}
+        */}
         </div>
 
         {/* Resource Detail Workbench Modal */}

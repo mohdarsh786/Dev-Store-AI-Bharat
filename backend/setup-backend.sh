@@ -1,86 +1,124 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# ╔══════════════════════════════════════════════════════════════════╗
+# ║          DevStore AI Bharat — Backend Setup Script              ║
+# ║          FastAPI + AWS Bedrock + Pinecone + Neon                 ║
+# ╚══════════════════════════════════════════════════════════════════╝
+set -e
 
-# Dev-Store Backend Setup Script
+# ANSI color codes
+RESET="\033[0m"
+BOLD="\033[1m"
+CYAN="\033[96m"
+GREEN="\033[92m"
+YELLOW="\033[93m"
+RED="\033[91m"
+DIM="\033[2m"
+BLUE="\033[94m"
 
-echo "================================================"
-echo " Dev-Store Backend Setup (Linux/Mac)"
-echo "================================================"
+clear
+
+echo -e "${CYAN}${BOLD}"
+echo " ██████╗ ███████╗██╗   ██╗    ███████╗████████╗ ██████╗ ██████╗ ███████╗"
+echo " ██╔══██╗██╔════╝██║   ██║    ██╔════╝╚══██╔══╝██╔═══██╗██╔══██╗██╔════╝"
+echo " ██║  ██║█████╗  ██║   ██║    ███████╗   ██║   ██║   ██║██████╔╝█████╗  "
+echo " ██║  ██║██╔══╝  ╚██╗ ██╔╝    ╚════██║   ██║   ██║   ██║██╔══██╗██╔══╝  "
+echo " ██████╔╝███████╗ ╚████╔╝     ███████║   ██║   ╚██████╔╝██║  ██║███████╗"
+echo " ╚═════╝ ╚══════╝  ╚═══╝      ╚══════╝   ╚═╝    ╚═════╝ ╚═╝  ╚═╝╚══════╝"
+echo -e "${RESET}"
+echo -e "${DIM}                   AI for Bharat — Developer Marketplace${RESET}"
+echo -e "${DIM}                   ─────────────────────────────────────${RESET}"
 echo ""
 
-# Check Python version
-if ! command -v python3 &> /dev/null; then
-    echo "[ERROR] Python 3 not found. Please install Python 3.11+"
+# ─── Resolve script directory ─────────────────────────────────────────────────
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# ─── Step 1: Python check ────────────────────────────────────────────────────
+echo -e " ${BLUE}[1/5]${RESET} Checking Python..."
+if ! command -v python3 &>/dev/null && ! command -v python &>/dev/null; then
+    echo -e "\n ${RED}[ERROR]${RESET} Python not found."
+    echo -e "        Install from ${CYAN}https://python.org${RESET} (v3.11+) and re-run."
     exit 1
 fi
 
-python_version=$(python3 --version 2>&1 | awk '{print $2}')
-echo "[OK] Python $python_version detected"
+# Use python3 if available, otherwise python
+PYTHON_CMD="python3"
+if ! command -v python3 &>/dev/null; then
+    PYTHON_CMD="python"
+fi
+
+PYTHON_VER=$($PYTHON_CMD --version)
+echo -e "       ${GREEN}${PYTHON_VER}${RESET} detected. ✓"
 echo ""
 
-# Create virtual environment
-if [ -d "venv" ]; then
-    echo "[INFO] Virtual environment already exists"
+# ─── Step 2: .env check ───────────────────────────────────────────────────────
+echo -e " ${BLUE}[2/5]${RESET} Checking environment configuration..."
+if [ ! -f ".env" ]; then
+    echo ""
+    echo -e " ${YELLOW}╔══════════════════════════════════════════════════════════════════╗${RESET}"
+    echo -e " ${YELLOW}║  ⚠  WARNING: .env not found!                                    ║${RESET}"
+    echo -e " ${YELLOW}║                                                                  ║${RESET}"
+    echo -e " ${YELLOW}║  Required backend config:                                        ║${RESET}"
+    echo -e " ${YELLOW}║    DATABASE_URL=postgresql://user:pass@host/db                   ║${RESET}"
+    echo -e " ${YELLOW}║    PINECONE_API_KEY=your-pinecone-api-key                        ║${RESET}"
+    echo -e " ${YELLOW}║    AWS_ACCESS_KEY_ID=your-aws-access-key                         ║${RESET}"
+    echo -e " ${YELLOW}║    AWS_SECRET_ACCESS_KEY=your-aws-secret-key                     ║${RESET}"
+    echo -e " ${YELLOW}║    BEDROCK_MODEL_ID=your-bedrock-model-arn                       ║${RESET}"
+    echo -e " ${YELLOW}║                                                                  ║${RESET}"
+    echo -e " ${YELLOW}║  Copy .env.example to .env and configure.                       ║${RESET}"
+    echo -e " ${YELLOW}╚══════════════════════════════════════════════════════════════════╝${RESET}"
+    echo ""
+    echo -e " ${DIM}Server will start but AI features will be disabled.${RESET}"
+    echo ""
+    read -r -p "  Continue anyway? [y/N] " choice
+    case "$choice" in
+        y|Y) echo "" ;;
+        *)   echo -e "\n ${RED}Aborted.${RESET} Create .env and re-run." && exit 1 ;;
+    esac
 else
-    echo "Creating virtual environment..."
-    python3 -m venv venv
-    if [ $? -ne 0 ]; then
-        echo "[ERROR] Failed to create virtual environment"
-        exit 1
-    fi
-    echo "[OK] Virtual environment created"
+    echo -e "       .env found. Configuration ${GREEN}loaded${RESET}. ✓"
+    echo ""
+fi
+
+# ─── Step 3: Virtual environment ─────────────────────────────────────────────
+echo -e " ${BLUE}[3/5]${RESET} Setting up virtual environment..."
+if [ ! -d "venv" ]; then
+    echo -e "       Creating virtual environment with ${CYAN}${PYTHON_CMD}${RESET}..."
+    $PYTHON_CMD -m venv venv
+    echo -e "       Virtual environment created. ✓"
+else
+    echo -e "       Virtual environment exists. Skipping creation. ✓"
 fi
 echo ""
 
-# Activate virtual environment
-echo "Activating virtual environment..."
+# ─── Step 4: Install dependencies ────────────────────────────────────────────
+echo -e " ${BLUE}[4/5]${RESET} Installing Python dependencies..."
 source venv/bin/activate
+echo -e "       Virtual environment activated. Installing packages..."
+echo ""
+pip install -r requirements.txt
+echo ""
+echo -e "       Dependencies installed. ✓"
 echo ""
 
-# Upgrade pip
-echo "Upgrading pip..."
-pip install --upgrade pip --quiet
+# ─── Step 5: Launch ──────────────────────────────────────────────────────────
+echo -e " ${BLUE}[5/5]${RESET} Launching FastAPI dev server..."
+echo ""
+echo -e " ${GREEN}${BOLD}╔══════════════════════════════════════════════════════════════════╗${RESET}"
+echo -e " ${GREEN}${BOLD}║                                                                  ║${RESET}"
+echo -e " ${GREEN}${BOLD}║   ✅  DevStore Backend Initialized — AI for Bharat               ║${RESET}"
+echo -e " ${GREEN}${BOLD}║                                                                  ║${RESET}"
+echo -e " ${GREEN}${BOLD}║   Backend API:  ${CYAN}http://localhost:8000${GREEN}                          ║${RESET}"
+echo -e " ${GREEN}${BOLD}║   API Docs:     ${CYAN}http://localhost:8000/docs${GREEN}                     ║${RESET}"
+echo -e " ${GREEN}${BOLD}║   Health Check: ${CYAN}http://localhost:8000/api/v1/health${GREEN}            ║${RESET}"
+echo -e " ${GREEN}${BOLD}║                                                                  ║${RESET}"
+echo -e " ${GREEN}${BOLD}║   Frontend (start separately):                                   ║${RESET}"
+echo -e " ${GREEN}${BOLD}║     ${DIM}cd ../frontend${GREEN}                                             ║${RESET}"
+echo -e " ${GREEN}${BOLD}║     ${DIM}npm install${GREEN}                                                ║${RESET}"
+echo -e " ${GREEN}${BOLD}║     ${DIM}npm run dev${GREEN}                                                ║${RESET}"
+echo -e " ${GREEN}${BOLD}║                                                                  ║${RESET}"
+echo -e " ${GREEN}${BOLD}║   Press Ctrl+C to stop the server                                ║${RESET}"
+echo -e " ${GREEN}${BOLD}╚══════════════════════════════════════════════════════════════════╝${RESET}"
 echo ""
 
-# Install dependencies
-echo "Installing dependencies (this may take a few minutes)..."
-pip install -r requirements.txt --quiet
-if [ $? -ne 0 ]; then
-    echo "[ERROR] Failed to install dependencies"
-    exit 1
-fi
-echo "[OK] Dependencies installed"
-echo ""
-
-# Copy environment template
-if [ ! -f .env ]; then
-    if [ -f .env.example ]; then
-        echo "Creating .env file..."
-        cp .env.example .env
-        echo "[OK] .env created. Please edit .env with your AWS credentials"
-    else
-        echo "[WARNING] .env.example not found"
-    fi
-else
-    echo "[INFO] .env already exists"
-fi
-echo ""
-
-# Clean cache
-echo "Cleaning Python cache..."
-find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null
-find . -type f -name "*.pyc" -delete 2>/dev/null
-echo "[OK] Cache cleaned"
-echo ""
-
-echo "================================================"
-echo " Backend Setup Complete!"
-echo "================================================"
-echo ""
-echo "Next steps:"
-echo "  1. Edit .env with your AWS credentials"
-echo "  2. Test connections: cd tests && python test_connections_simple.py"
-echo "  3. Create OpenSearch index: python setup_opensearch_index.py"
-echo "  4. Start server: uvicorn api_gateway:app --reload --port 8000"
-echo ""
-echo "API docs will be at: http://localhost:8000/api/docs"
-echo ""
+uvicorn main:app --reload --port 8000

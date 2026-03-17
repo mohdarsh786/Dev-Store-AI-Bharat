@@ -1,181 +1,240 @@
-# DevStore - AI-Powered Developer Marketplace
+# 🇮🇳 Dev-Store: AI for Bharat
 
-DevStore is a Google Play Store-inspired marketplace that enables developers to discover, evaluate, and integrate APIs, Models, and Datasets through intelligent, context-aware search powered by AWS services.
+**Empowering Indian developers with intelligent, RAG-powered resource discovery**
 
-## Features
+*An AI-first marketplace that transforms how developers discover, evaluate, and integrate APIs, models, and datasets through context-aware search with multilingual support for English, Hindi, and Hinglish.*
 
-- **Semantic Search**: Natural language search with RAG (Retrieval-Augmented Generation)
-- **Smart Ranking**: Composite scoring based on relevance, popularity, optimization, and freshness
-- **Glassmorphism UI**: Modern, custom-designed interface with dark/light themes
-- **Multilingual Support**: English, Hindi, Hinglish, Tamil, Telugu, Bengali
-- **One-Click Boilerplate**: Generate ready-to-use starter code in Python, JavaScript, or TypeScript
-- **Health Monitoring**: Real-time API health status and uptime tracking
-- **Solution Blueprints**: Visual architecture diagrams showing resource relationships
+---
 
-## Tech Stack
+## 🚀 Tech Stack
 
-### Backend
-- **Framework**: FastAPI (Python 3.11)
-- **Deployment**: EC2 + Gunicorn/Uvicorn (`backend/api_gateway.py`)
-- **Database**: RDS Aurora PostgreSQL
-- **Search**: Amazon OpenSearch Service
-- **AI/ML**: Amazon Bedrock (Claude 3, Titan Embeddings)
-- **Storage**: Amazon S3
-- **Authentication**: AWS Cognito
+![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)
+![AWS Bedrock](https://img.shields.io/badge/AWS_Bedrock-FF9900?style=for-the-badge&logo=amazon-aws&logoColor=white)
+![Pinecone](https://img.shields.io/badge/Pinecone-000000?style=for-the-badge&logo=pinecone&logoColor=white)
+![Neon](https://img.shields.io/badge/Neon-00E599?style=for-the-badge&logo=neon&logoColor=white)
+![AWS Amplify](https://img.shields.io/badge/AWS_Amplify-FF9900?style=for-the-badge&logo=aws-amplify&logoColor=white)
 
-### Frontend
-- **Framework**: Next.js 16 App Router
-- **Build Tool**: Next.js build pipeline
-- **Styling**: Vanilla CSS with CSS Modules
-- **Routing**: File-based routing with Route Handlers
-- **Visualization**: React Flow
-- **i18n**: react-i18next
-- **Deployment**: S3 + CloudFront
+**Frontend:** Next.js 16 (App Router) • TypeScript • Tailwind CSS • NextAuth  
+**Backend:** FastAPI • Python 3.11 • Pydantic • Mangum (Lambda)  
+**AI/ML:** AWS Bedrock (Claude 3.5 Sonnet) • Titan Embeddings v2  
+**Database:** Neon (Serverless PostgreSQL) • Pinecone (Serverless Vector Store)  
+**Infrastructure:** AWS Amplify • EC2 • Redis • S3  
 
-## Project Structure
+---
+
+## ✨ Key Features
+
+### 🎯 **Dual-Layer Filtering**
+Advanced search combining SQL metadata filtering (category, pricing, popularity) with vector similarity ranking. SQL filters narrow the dataset, then vector search ranks by semantic relevance.
+
+### 🤖 **RAG-Powered Chat Assistant**
+Context-aware AI assistant using AWS Bedrock Claude 3.5 Sonnet that understands developer intent and provides personalized resource recommendations with code examples.
+
+### 📊 **Multi-Source Ingestion Pipeline**
+Automated data pipeline ingesting from:
+- **GitHub:** 654+ repositories and developer tools
+- **HuggingFace:** 1,100+ ML models and datasets  
+- **Kaggle:** 40+ structured datasets
+- **OpenRouter:** 346+ LLM models with pricing
+
+### ⚖️ **Score Normalization Engine**
+Custom ranking algorithm normalizing scores across different platforms using composite metrics: relevance, popularity, optimization, and freshness with unified `rank_score` computation.
+
+### 🌐 **AI for Bharat Mission**
+Native support for English, Hindi, and Hinglish queries with intelligent language detection and culturally-aware response matching for India's 5M+ developers.
+
+---
+
+## 🏗️ Architecture
+
+**Serverless-First Approach** with hybrid deployment strategy:
+
+```mermaid
+graph TB
+    A[Next.js 16 Frontend<br/>AWS Amplify] --> B[FastAPI Gateway<br/>EC2 + Gunicorn]
+    B --> C[Neon PostgreSQL<br/>Serverless Metadata]
+    B --> D[Pinecone Vector DB<br/>Serverless Search]
+    B --> E[AWS Bedrock<br/>Claude 3.5 + Titan]
+    B --> F[Redis Cache<br/>ElastiCache]
+    G[Ingestion Pipeline<br/>Python Orchestrator] --> C
+    G --> D
+    G --> E
+```
+
+**Key Design Decisions:**
+- **Frontend:** Amplify for global CDN and auto-scaling
+- **Backend:** EC2 for cost optimization with reserved instances  
+- **Database:** Neon for serverless PostgreSQL with connection pooling
+- **Vector Store:** Pinecone for sub-100ms semantic search
+- **AI:** Bedrock for enterprise-grade LLM access
+- **Cache:** Redis for distributed locks and embedding cache
+
+---
+
+## 📂 Project Structure
 
 ```
-devstore/
-├── backend/              # FastAPI backend
-│   ├── api_gateway.py   # EC2 application entry point
-│   ├── config.py        # Configuration
-│   ├── models/          # Data models
-│   ├── services/        # Business logic
-│   ├── clients/         # AWS clients
-│   ├── routers/         # API routes
-│   └── tests/           # Test suite
-├── frontend/            # React frontend
-│   ├── src/
-│   │   ├── components/  # UI components
-│   │   ├── pages/       # Page components
-│   │   ├── services/    # API clients
-│   │   ├── styles/      # CSS files
-│   │   └── utils/       # Utilities
-│   └── public/          # Static assets
-└── .kiro/
-    └── specs/
-        └── devstore/    # Project specifications
+dev-store-ai-bharat/
+├── backend/                    # FastAPI backend
+│   ├── main.py                # Application entry point
+│   ├── api_gateway.py         # EC2 deployment gateway
+│   ├── config.py              # Configuration management
+│   ├── clients/               # AWS Bedrock & Database clients
+│   ├── routers/               # API route handlers
+│   │   ├── search.py          # Dual-layer search endpoint
+│   │   ├── rag.py             # RAG chat assistant
+│   │   ├── resources.py       # Resource management
+│   │   └── auth.py            # Authentication
+│   ├── services/              # Business logic
+│   │   ├── search.py          # Search orchestration
+│   │   ├── embeddings.py      # Vector operations
+│   │   └── ranking.py         # Score normalization
+│   ├── models/                # Pydantic data models
+│   ├── ingestion/             # Multi-source pipeline
+│   │   ├── orchestrator_production.py  # Main pipeline
+│   │   ├── fetchers/          # Source-specific harvesters
+│   │   ├── services/          # Chunking, embedding, ranking
+│   │   ├── stages/            # Atomic pipeline stages
+│   │   └── INGESTION_GUIDE.md # Pipeline documentation
+│   ├── migrations/            # Database schema
+│   └── tests/                 # Test suite
+├── frontend/                  # Next.js 16 frontend
+│   ├── app/                   # App Router pages
+│   ├── components/            # React components
+│   │   └── DevStoreDashboard.jsx  # Main dashboard
+│   ├── lib/                   # API client utilities
+│   └── auth.ts                # NextAuth configuration
+├── docs/                      # Documentation
+└── .kiro/specs/               # Feature specifications
 ```
+
+---
 
 ## 🚀 Quick Start
 
-**Your system is ready to run!** All dependencies are installed and 2,240 real resources are available.
-
-### One-Command Start
-
+### 1️⃣ **Clone & Setup**
 ```bash
-start_dev.bat
+git clone https://github.com/your-org/dev-store-ai-bharat.git
+cd dev-store-ai-bharat
 ```
 
-This will:
-1. Start backend on http://localhost:8000
-2. Start frontend on http://localhost:3000
-3. Open browser automatically
+### 2️⃣ **Environment Configuration**
+```bash
+# Backend
+cp backend/.env.example backend/.env
+# Frontend  
+cp frontend/.env.local.example frontend/.env.local
+# Configure your API keys (see .env files for details)
+```
 
-**That's it!** 🎉
+### 3️⃣ **Start Development**
+```bash
+# Terminal 1 - Backend
+cd backend && pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
 
-### Manual Start (Alternative)
+# Terminal 2 - Frontend
+cd frontend && npm install && npm run dev
 
-**Terminal 1 - Backend:**
+# Or use the convenience script
+./start_all.sh
+```
+
+**🌐 Access:** Frontend at `http://localhost:3000` • API docs at `http://localhost:8000/docs`
+
+---
+
+## 🚀 Deployment
+
+### **Production Architecture**
+- **Frontend:** AWS Amplify with global CDN (configured via `amplify.yml`)
+- **Backend:** EC2 with Application Load Balancer (see `backend/deploy.sh`)
+- **Database:** Neon PostgreSQL with connection pooling
+- **Monitoring:** Custom health checks and systemd services
+
+### **Deployment Commands**
+```bash
+# Frontend (Amplify auto-deploys on push)
+git push origin main
+
+# Backend (EC2 deployment)
+cd backend && ./deploy.sh
+```
+
+---
+
+## 📊 Performance Metrics
+
+- **Search Latency:** <200ms average response time
+- **Vector Search:** Sub-100ms with Pinecone serverless optimization
+- **Pipeline Throughput:** 10-15 resources/sec (Bedrock embedding limited)
+- **Full Sync:** 3-5 minutes for 2,500+ resources
+- **Scale:** Optimized for 100K+ resource tier
+
+---
+
+## 🛠️ API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/search` | POST | Dual-layer semantic search (SQL + Vector) |
+| `/api/v1/rag/chat` | POST | RAG-powered AI assistant |
+| `/api/v1/resources` | GET | Resource listing with filters |
+| `/api/v1/resources/{id}` | GET | Resource details with metadata |
+| `/api/v1/health` | GET | System health and metrics |
+
+---
+
+## 🔄 Ingestion Pipeline
+
+Run the automated multi-source ingestion:
+
 ```bash
 cd backend
-.venv\Scripts\activate
-uvicorn main:app --reload --port 8000
+
+# Production pipeline (requires AWS credentials)
+python ingestion/run_production.py
+
+# Development pipeline (JSON output only)
+python ingestion/run_ingestion.py
 ```
 
-**Terminal 2 - Frontend:**
-```bash
-cd frontend
-npm run dev
-```
+**Pipeline Stages:** Fetch → Normalize → Deduplicate → Upsert (Neon) → Embed (Bedrock) → Upsert (Pinecone) → Rank → Cache
 
-Then open: http://localhost:3000
+See [`backend/ingestion/INGESTION_GUIDE.md`](backend/ingestion/INGESTION_GUIDE.md) for detailed documentation.
 
-### Verify Setup
+---
 
-```bash
-verify_setup.bat
-```
+## 🏆 Built for AI4 Bharat Hackathon
 
-### First Time Setup
+**Team Dev-Store-AI-Bharat:**
+- **Mohd Arsh** - AI/ML Engineering (RAG, Embeddings, Multilingual)
+- **Raunak** - Data Engineering (Pipelines, Infrastructure, Monitoring)  
+- **Vansh** - Frontend Engineering (UI/UX, Performance, Accessibility)
+- **Aryan** - Backend Engineering (APIs, DevOps, Architecture)
 
-If you haven't set up yet:
-```bash
-quick_setup.bat
-```
+---
 
-## Documentation
+## 📚 Documentation
 
-### Quick Start Guides
-- **[START_HERE.md](START_HERE.md)** - 🚀 Start here! Quick start in 3 steps
-- **[READY_TO_RUN.md](READY_TO_RUN.md)** - ✅ Verification that system is ready
-- **[SETUP_CHECKLIST.md](SETUP_CHECKLIST.md)** - 📋 Complete setup checklist
-- **[GETTING_STARTED.md](GETTING_STARTED.md)** - 🎯 Getting started guide
+- [🔧 Backend Setup Guide](backend/README.md)
+- [🤖 RAG System Documentation](backend/RAG_SYSTEM_GUIDE.md)
+- [📊 Ranking Algorithm Details](backend/RANKING_FEATURES.md)
+- [🔄 Ingestion Pipeline Guide](backend/ingestion/INGESTION_GUIDE.md)
+- [🚀 EC2 Deployment Guide](backend/README_EC2.md)
 
-### Detailed Guides
-- [COMPLETE_SETUP_GUIDE.md](COMPLETE_SETUP_GUIDE.md) - Full setup guide (all phases)
-- [CURRENT_STATUS.md](CURRENT_STATUS.md) - Project status and features
-- [AWS_SETUP_GUIDE.md](AWS_SETUP_GUIDE.md) - AWS configuration
-- [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) - Database structure
-- [EC2_DEPLOYMENT_GUIDE.md](EC2_DEPLOYMENT_GUIDE.md) - Production deployment
+---
 
-### Backend Documentation
-- `backend/ingestion/PRODUCTION_PIPELINE.md` - Ingestion pipeline guide
-- `backend/ingestion/QUICKSTART.md` - Ingestion quick start
-- `backend/README.md` - Backend overview
+## 📄 License
 
-## Testing
+Apache License 2.0 - Built with ❤️ for the Indian developer community
 
-```bash
-# Backend tests
-cd backend/tests
-python test_connections_simple.py  # Quick connection test
-pytest                              # Full test suite
+---
 
-# Frontend checks
-cd frontend
-npm run build
-```
+<div align="center">
 
-## Deployment
+**[🌐 Live Demo](https://main.d2goix7t3vcz9c.amplifyapp.com)** • **[📖 API Docs](http://localhost:8000/docs)** 
 
-See [EC2_DEPLOYMENT_GUIDE.md](EC2_DEPLOYMENT_GUIDE.md) for production deployment instructions.
 
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    CloudFront (CDN)                          │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│                React Frontend (S3)                           │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────┐
-│          EC2 FastAPI Gateway (Gunicorn/Uvicorn)              │
-└─────────────────────────────────────────────────────────────┘
-                              ↓
-        ┌──────────────────┬──────────────────┬──────────────┐
-        ↓                  ↓                  ↓              ↓
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────┐
-│ RDS Aurora   │  │  OpenSearch  │  │   Bedrock    │  │   S3    │
-│ PostgreSQL   │  │   (Vector    │  │   (Claude/   │  │ (Assets)│
-│              │  │   Search)    │  │   Titan)     │  │         │
-└──────────────┘  └──────────────┘  └──────────────┘  └─────────┘
-```
-
-## Team
-
-- **Mohd Arsh** - AI/Search (RAG, Ranking, Multilingual)
-- **Raunak** - Data/Infrastructure (Crawlers, Database, Health Monitoring)
-- **Vansh** - Frontend (UI/UX, Glassmorphism Design)
-- **Aryan** - Backend/Deployment (API, Boilerplate Generator, DevOps)
-
-## Hackathon
-
-Built for **AI4 Bharat powered by AWS** hackathon.
-
-## License
-
-MIT
+</div>
