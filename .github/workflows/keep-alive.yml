@@ -11,7 +11,7 @@ jobs:
     steps:
       - name: Ping health endpoint
         run: |
-          response=$(curl -s -o /dev/null -w "%{http_code}" https://devstore-backend.onrender.com/api/v1/health)
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://dev-store-ai-bharat.onrender.com/api/v1/health)
           if [ "$response" -eq 200 ]; then
             echo "Backend is alive (HTTP $response)"
           else
