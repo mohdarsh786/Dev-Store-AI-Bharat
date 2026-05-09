@@ -12,6 +12,7 @@ Uses existing infrastructure components:
 - RankingService for score computation
 """
 import sys
+import hashlib
 import os
 import uuid
 import logging
