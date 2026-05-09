@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: devstore-backend
+    env: python
+    region: singapore
+    plan: free
+    branch: main
+    buildCommand: "pip install -r backend/requirements.txt"
+    startCommand: "cd backend && gunicorn main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT"
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_REGION
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: NEON_DATABASE_URL
+        sync: false
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_INDEX_NAME
+        sync: false
+      - key: PINECONE_ENVIRONMENT
+        sync: false
+      - key: BEDROCK_MODEL_ID
+        sync: false
+      - key: BEDROCK_EMBEDDING_MODEL_ID
+        sync: false
+      - key: SECRET_KEY
+        sync: false
